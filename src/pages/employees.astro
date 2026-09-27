@@ -48,6 +48,7 @@ const selectClass = "mt-1.5 w-full rounded-lg border border-border bg-white px-3
         <form id="employee-form" class="rounded-xl border border-border bg-white p-6 shadow-sm" novalidate>
           <h2 id="form-heading" class="text-xl">Add employee</h2>
           <div class="mt-5 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            <Field id="employeeId" label="Employee ID" placeholder="e.g. EMP001" />
             <Field id="name" label="Full name" required />
             <Field id="role" label="Role / designation" required placeholder="e.g. Cloud Engineer" />
             <div>
@@ -352,6 +353,7 @@ const selectClass = "mt-1.5 w-full rounded-lg border border-border bg-white px-3
       }
       const who = el("div", "min-w-0 flex-1");
       who.append(el("h3", "truncate text-lg font-semibold text-navy", e.name), el("p", "text-sm text-text-muted", e.role));
+      if (e.employeeId) who.append(el("p", "text-xs text-text-muted", `ID: ${e.employeeId}`));
       const badges = el("div", "mt-2 flex flex-wrap gap-1.5");
       badges.append(
         el("span", `rounded-full px-2.5 py-0.5 text-xs font-medium ${typeBadge[e.type] ?? ""}`, e.type),
@@ -454,7 +456,7 @@ const selectClass = "mt-1.5 w-full rounded-lg border border-border bg-white px-3
       const shown = employees.filter((e) => {
         if (filter.value && e.type !== filter.value) return false;
         if (!query) return true;
-        return [e.name, e.role, ...e.skills].some((text) => text.toLowerCase().includes(query));
+        return [e.name, e.role, e.employeeId ?? "", ...e.skills].some((text) => text.toLowerCase().includes(query));
       });
       $("count").textContent = `(${shown.length})`;
       $("empty").classList.toggle("hidden", shown.length > 0);
@@ -490,6 +492,7 @@ const selectClass = "mt-1.5 w-full rounded-lg border border-border bg-white px-3
       formNote.textContent = "Email and password aren't changed here — use Reset password for their login.";
       formError.classList.add("hidden");
 
+      (form.elements.namedItem("employeeId") as HTMLInputElement).value = e.employeeId ?? "";
       (form.elements.namedItem("name") as HTMLInputElement).value = e.name;
       (form.elements.namedItem("role") as HTMLInputElement).value = e.role;
       (form.elements.namedItem("type") as HTMLSelectElement).value = e.type;
@@ -632,6 +635,7 @@ const selectClass = "mt-1.5 w-full rounded-lg border border-border bg-white px-3
       submitButton.disabled = true;
       try {
         const common = {
+          employeeId: (v.employeeId ?? "").trim(),
           name: v.name.trim(),
           role: v.role.trim(),
           type: v.type as Employee["type"],

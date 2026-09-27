@@ -10,6 +10,8 @@ export type WorkingMode = (typeof WORKING_MODES)[number];
 
 export interface Employee {
   id: string;
+  /** Manually assigned by an Admin; empty until set. Not the same as `id` (the internal record key). */
+  employeeId?: string;
   name: string;
   /** Job title / designation, e.g. "Cloud Engineer" — distinct from `accountRole` below. */
   role: string;

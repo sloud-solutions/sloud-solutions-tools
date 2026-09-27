@@ -70,7 +70,17 @@ export async function uploadExpenseDocument(file: File): Promise<{ documentUrl: 
 export const listEmployees = () => request<Employee[]>("/employees");
 export const deleteEmployee = (id: string) => request<void>(`/employees/${encodeURIComponent(id)}`, { method: "DELETE" });
 
+export interface EmployeeOption {
+  id: string;
+  employeeId?: string;
+  name: string;
+}
+
+/** Available to anyone with Expense Tracker access (not just Employees access) -- powers the "paid by" dropdown. */
+export const listEmployeeOptions = () => request<EmployeeOption[]>("/employees");
+
 export interface EmployeeEditPayload {
+  employeeId?: string;
   name: string;
   role: string;
   type: Employee["type"];
@@ -91,6 +101,7 @@ export const updateEmployee = (id: string, payload: EmployeeEditPayload) =>
   request<Employee>(`/employees/${encodeURIComponent(id)}`, { method: "PATCH", body: JSON.stringify(payload) });
 
 export interface NewEmployeePayload {
+  employeeId?: string;
   name: string;
   role: string;
   type: Employee["type"];

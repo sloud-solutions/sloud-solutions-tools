@@ -41,7 +41,14 @@ const maxDocumentMb = DOCUMENT_MAX_BYTES / (1024 * 1024);
         <div class="rounded-xl border border-border bg-white shadow-sm">
           <div class="flex flex-wrap items-center justify-between gap-3 border-b border-border p-5">
             <h2 class="text-xl">Purchases <span id="count" class="text-sm font-normal text-text-muted"></span></h2>
-            <div class="flex gap-2">
+            <div class="flex flex-wrap gap-2">
+              <input
+                id="search-box"
+                type="search"
+                placeholder="Search item, vendor, paid by, notes…"
+                aria-label="Search purchases"
+                class="w-56 rounded-lg border border-border bg-white px-3 py-2 text-sm focus-visible:border-blue"
+              />
               <select id="filter-category" class="rounded-lg border border-border bg-white px-3 py-2 text-sm" aria-label="Filter by category">
                 <option value="">All categories</option>
                 {EXPENSE_CATEGORIES.map((c) => <option>{c}</option>)}
@@ -49,6 +56,14 @@ const maxDocumentMb = DOCUMENT_MAX_BYTES / (1024 * 1024);
               <select id="filter-status" class="rounded-lg border border-border bg-white px-3 py-2 text-sm" aria-label="Filter by status">
                 <option value="">All statuses</option>
                 {PAYMENT_STATUSES.map((s) => <option>{s}</option>)}
+              </select>
+              <select id="sort-by" class="rounded-lg border border-border bg-white px-3 py-2 text-sm" aria-label="Sort by">
+                <option value="date-desc">Date (newest)</option>
+                <option value="date-asc">Date (oldest)</option>
+                <option value="amount-desc">Amount (high to low)</option>
+                <option value="amount-asc">Amount (low to high)</option>
+                <option value="expiry-asc">Expiry (soonest)</option>
+                <option value="item-asc">Item (A–Z)</option>
               </select>
               <button
                 id="download-excel"
@@ -64,6 +79,7 @@ const maxDocumentMb = DOCUMENT_MAX_BYTES / (1024 * 1024);
             <table class="w-full text-left text-sm">
               <thead class="bg-bg-alt text-xs uppercase tracking-wide text-text-muted">
                 <tr>
+                  <th class="px-3 py-3 font-semibold">#</th>
                   <th class="px-3 py-3 font-semibold">Date</th>
                   <th class="px-3 py-3 font-semibold">Item</th>
                   <th class="px-3 py-3 font-semibold">Category</th>
@@ -80,7 +96,7 @@ const maxDocumentMb = DOCUMENT_MAX_BYTES / (1024 * 1024);
               <template id="icon-tpl-delete"><Icon name="x" class="h-4 w-4" /></template>
               <tfoot>
                 <tr class="border-t border-border bg-bg-alt">
-                  <td colspan="4" class="px-3 py-3 text-right text-xs font-semibold uppercase tracking-wide text-text-muted">Total shown</td>
+                  <td colspan="5" class="px-3 py-3 text-right text-xs font-semibold uppercase tracking-wide text-text-muted">Total shown</td>
                   <td id="shown-total" class="px-3 py-3 text-right font-semibold text-navy"></td>
                   <td colspan="4"></td>
                 </tr>
@@ -101,7 +117,12 @@ const maxDocumentMb = DOCUMENT_MAX_BYTES / (1024 * 1024);
             </select>
           </div>
           <Field id="amount" label="Amount (INR)" type="number" required min="1" />
-          <Field id="paidBy" label="Paid by" required placeholder="e.g. Archana, Company card" />
+          <div>
+            <label for="paidBy" class="block text-sm font-medium text-navy">Paid by <span class="text-red-600" aria-hidden="true">*</span></label>
+            <select id="paidBy" name="paidBy" required class={selectClass}>
+              <option value="">Loading employees…</option>
+            </select>
+          </div>
           <div>
             <label for="status" class="block text-sm font-medium text-navy">Status</label>
             <select id="status" name="status" class={selectClass}>
@@ -151,7 +172,7 @@ const maxDocumentMb = DOCUMENT_MAX_BYTES / (1024 * 1024);
 <script>
   import { requireLogin } from "../lib/auth";
   import { loadMe, hasAccess } from "../lib/access";
-  import { listExpenses, createExpense, updateExpense, deleteExpense, uploadExpenseDocument, ApiError } from "../lib/api";
+  import { listExpenses, createExpense, updateExpense, deleteExpense, uploadExpenseDocument, listEmployeeOptions, type EmployeeOption, ApiError } from "../lib/api";
   import type { Expense } from "../data/expenses";
   import { DOCUMENT_ALLOWED_TYPES, DOCUMENT_MAX_BYTES } from "../data/expenses";
 
@@ -185,9 +206,39 @@ const maxDocumentMb = DOCUMENT_MAX_BYTES / (1024 * 1024);
     loadingNote.classList.add("hidden");
     content.classList.remove("hidden");
 
+    const paidBySelect = $("paidBy") as HTMLSelectElement;
+    let employeeOptions: EmployeeOption[] = [];
+    try {
+      employeeOptions = await listEmployeeOptions();
+    } catch {
+      // Fall back to whoever has already been recorded as "paid by", so the form still works.
+      const seen = new Set<string>();
+      employeeOptions = expenses
+        .map((e) => e.paidBy)
+        .filter((name) => name && !seen.has(name) && seen.add(name))
+        .map((name) => ({ id: name, name }));
+    }
+    const paidByLabel = (o: EmployeeOption) => (o.employeeId ? `${o.employeeId} — ${o.name}` : o.name);
+    function populatePaidBySelect() {
+      const sorted = [...employeeOptions].sort((a, b) => paidByLabel(a).localeCompare(paidByLabel(b)));
+      paidBySelect.replaceChildren(
+        new Option("Select…", ""),
+        ...sorted.map((o) => new Option(paidByLabel(o), paidByLabel(o))),
+      );
+    }
+    // Keeps a value already on a purchase selectable even if it's a disabled/removed
+    // employee or a free-text value from before this dropdown existed.
+    function ensurePaidByOption(value: string) {
+      if (!value || [...paidBySelect.options].some((o) => o.value === value)) return;
+      paidBySelect.add(new Option(value, value));
+    }
+    populatePaidBySelect();
+
     const rows = $("rows");
     const filterCategory = $("filter-category") as HTMLSelectElement;
     const filterStatus = $("filter-status") as HTMLSelectElement;
+    const searchBox = $("search-box") as HTMLInputElement;
+    const sortBy = $("sort-by") as HTMLSelectElement;
     const form = $("expense-form") as HTMLFormElement;
     const formHeading = $("form-heading");
     const submitButton = $("submit-button") as HTMLButtonElement;
@@ -226,7 +277,8 @@ const maxDocumentMb = DOCUMENT_MAX_BYTES / (1024 * 1024);
       (form.elements.namedItem("vendor") as HTMLInputElement).value = e.vendor;
       (form.elements.namedItem("category") as HTMLSelectElement).value = e.category;
       (form.elements.namedItem("amount") as HTMLInputElement).value = String(e.amount);
-      (form.elements.namedItem("paidBy") as HTMLInputElement).value = e.paidBy;
+      ensurePaidByOption(e.paidBy);
+      paidBySelect.value = e.paidBy;
       (form.elements.namedItem("status") as HTMLSelectElement).value = e.status;
       (form.elements.namedItem("notes") as HTMLInputElement).value = e.notes ?? "";
       (form.elements.namedItem("expiryDate") as HTMLInputElement).value = e.expiryDate;
@@ -268,10 +320,21 @@ const maxDocumentMb = DOCUMENT_MAX_BYTES / (1024 * 1024);
       $("stat-open").textContent = inr(sum(expenses.filter((e) => e.status !== "Paid")));
     }
 
+    const sorters: Record<string, (a: Expense, b: Expense) => number> = {
+      "date-desc": (a, b) => b.date.localeCompare(a.date),
+      "date-asc": (a, b) => a.date.localeCompare(b.date),
+      "amount-desc": (a, b) => b.amount - a.amount,
+      "amount-asc": (a, b) => a.amount - b.amount,
+      "expiry-asc": (a, b) => a.expiryDate.localeCompare(b.expiryDate),
+      "item-asc": (a, b) => a.item.localeCompare(b.item),
+    };
+
     function visibleExpenses() {
+      const query = searchBox.value.trim().toLowerCase();
       return expenses
         .filter((e) => (!filterCategory.value || e.category === filterCategory.value) && (!filterStatus.value || e.status === filterStatus.value))
-        .sort((a, b) => b.date.localeCompare(a.date));
+        .filter((e) => !query || [e.item, e.vendor, e.paidBy, e.notes ?? "", e.category].some((text) => text.toLowerCase().includes(query)))
+        .sort(sorters[sortBy.value] ?? sorters["date-desc"]);
     }
 
     function render() {
@@ -347,6 +410,7 @@ const maxDocumentMb = DOCUMENT_MAX_BYTES / (1024 * 1024);
           }
 
           tr.append(
+            cell(String(i + 1), "text-text-muted"),
             cell(fmtDate(e.date), "whitespace-nowrap"),
             item,
             cell(e.category),
@@ -369,20 +433,22 @@ const maxDocumentMb = DOCUMENT_MAX_BYTES / (1024 * 1024);
 
     filterCategory.addEventListener("change", render);
     filterStatus.addEventListener("change", render);
+    sortBy.addEventListener("change", render);
+    searchBox.addEventListener("input", render);
 
     const csvCell = (value: string) => `"${value.replace(/"/g, '""')}"`;
 
     function downloadCsv() {
       const shown = visibleExpenses();
-      const headers = ["Date", "Item", "Vendor", "Category", "Amount (INR)", "Paid by", "Status", "Expiry date", "Auto renewal", "Document", "Notes"];
+      const headers = ["S.No", "Date", "Item", "Vendor", "Category", "Amount (INR)", "Paid by", "Status", "Expiry date", "Auto renewal", "Document", "Notes"];
       const lines = [headers.map(csvCell).join(",")];
-      for (const e of shown) {
+      shown.forEach((e, i) => {
         lines.push(
-          [e.date, e.item, e.vendor, e.category, String(e.amount), e.paidBy, e.status, e.expiryDate, e.autoRenewal, e.documentUrl ?? "", e.notes ?? ""]
+          [String(i + 1), e.date, e.item, e.vendor, e.category, String(e.amount), e.paidBy, e.status, e.expiryDate, e.autoRenewal, e.documentUrl ?? "", e.notes ?? ""]
             .map(csvCell)
             .join(","),
         );
-      }
+      });
       // Leading BOM so Excel detects UTF-8 rather than mis-decoding the ₹ symbol / non-ASCII text.
       const blob = new Blob(["﻿" + lines.join("\r\n")], { type: "text/csv;charset=utf-8;" });
       const url = URL.createObjectURL(blob);
