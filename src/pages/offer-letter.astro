@@ -1,0 +1,368 @@
+---
+import Layout from "../layouts/Layout.astro";
+import Section from "../components/Section.astro";
+import Field from "../components/Field.astro";
+import { SEGMENTS } from "../data/company";
+import { listOfferTypes } from "../lib/offer-types";
+
+const offerTypes = listOfferTypes();
+const today = new Date().toISOString().slice(0, 10);
+
+const selectClass =
+  "mt-1.5 w-full rounded-lg border border-border bg-white px-3.5 py-2.5 text-sm text-text focus-visible:border-blue";
+const labelClass = "block text-sm font-medium text-navy";
+const legendClass = "text-base font-semibold text-heading";
+---
+
+<Layout title="Offer Letter Generator | Sloud Solutions Portal">
+  <Section background="white" maxWidth="narrow" class="text-center">
+    <p class="text-sm font-semibold uppercase tracking-wider text-blue">Offer Letter</p>
+    <h1 class="mt-4 text-4xl font-bold leading-tight sm:text-5xl">Offer Letter Generator</h1>
+    <p class="mx-auto mt-6 max-w-2xl text-lg leading-relaxed">
+      Choose a letter type, fill in the details, and download the letter as a PDF or Word document.
+    </p>
+  </Section>
+
+  <Section background="alt">
+    <div class="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+      <form id="offer-form" class="space-y-8 rounded-xl border border-border bg-white p-6 shadow-sm sm:p-8" novalidate>
+        <fieldset class="space-y-5">
+          <legend class={legendClass}>Letter</legend>
+          <div class="grid gap-5 sm:grid-cols-2">
+            <div class="sm:col-span-2">
+              <label for="employmentType" class={labelClass}>Employment type <span class="text-red-600" aria-hidden="true">*</span></label>
+              <select id="employmentType" name="employmentType" required class={selectClass}>
+                <option value="" disabled selected>Select type</option>
+                {
+                  offerTypes.map((t) => (
+                    <option value={t.folder} data-has-template={t.templateFile ? "true" : "false"}>
+                      {t.label}
+                      {t.templateFile ? "" : " (template not added yet)"}
+                    </option>
+                  ))
+                }
+              </select>
+              <p id="type-note" class="mt-2 hidden rounded-lg bg-amber-50 p-3 text-sm text-amber-900"></p>
+            </div>
+            <Field id="letterDate" label="Letter date" type="date" required value={today} />
+            <Field id="refNo" label="Reference number" type="number" required min="1" placeholder="e.g. 1" />
+          </div>
+        </fieldset>
+
+        <fieldset class="space-y-5">
+          <legend class={legendClass}>Candidate</legend>
+          <div class="grid gap-5 sm:grid-cols-2">
+            <Field id="candidateName" label="Full name" required class="sm:col-span-2" />
+            <Field id="candidateAddress" label="Address, city, state, PIN" required class="sm:col-span-2" />
+            <Field id="candidateEmail" label="Email" type="email" required />
+            <Field id="candidatePhone" label="Phone" type="tel" />
+          </div>
+        </fieldset>
+
+        <fieldset class="space-y-5">
+          <legend class={legendClass}>Internship</legend>
+          <div class="grid gap-5 sm:grid-cols-2">
+            <Field id="roleTitle" label="Role title" required />
+            <div>
+              <Field id="team" label="Function / team" required list="team-options" />
+              <datalist id="team-options">
+                {SEGMENTS.map((s) => <option value={s.name} />)}
+              </datalist>
+            </div>
+            <Field id="startDate" label="Start date" type="date" required />
+            <Field id="endDate" label="End date" type="date" required />
+            <div>
+              <label for="mode" class={labelClass}>Mode of working <span class="text-red-600" aria-hidden="true">*</span></label>
+              <select id="mode" name="mode" required class={selectClass}>
+                <option>Remote</option>
+                <option>Hybrid</option>
+                <option>On-site</option>
+              </select>
+            </div>
+            <Field id="location" label="Location" placeholder="e.g. Bengaluru" class="hidden" />
+            <Field id="hoursPerWeek" label="Hours per week" type="number" required min="1" value="20" />
+            <Field id="mentorName" label="Mentor name" required />
+            <Field id="mentorDesignation" label="Mentor designation" required />
+            <div>
+              <label for="stipendType" class={labelClass}>Stipend</label>
+              <select id="stipendType" name="stipendType" class={selectClass}>
+                <option value="unpaid">Unpaid internship</option>
+                <option value="paid">Paid (INR per month)</option>
+              </select>
+            </div>
+            <Field id="stipendAmount" label="Stipend per month (INR)" type="number" min="1" class="hidden" />
+            <Field id="payDay" label="Paid by day of next month" type="number" min="1" max="31" value="7" class="hidden" />
+            <Field id="noticeDays" label="Termination notice (days)" type="number" required min="1" max="30" value="7" />
+            <Field id="acceptBy" label="Acceptance due date" type="date" required />
+          </div>
+        </fieldset>
+
+        <fieldset class="space-y-5">
+          <legend class={legendClass}>Company details <span class="text-xs font-normal text-text-muted">(remembered in this browser)</span></legend>
+          <div class="grid gap-5 sm:grid-cols-2">
+            <Field id="companyAddress" label="Registered address" required persist class="sm:col-span-2" />
+            <Field id="companyRegNo" label="CIN / registration no. / GSTIN" persist class="sm:col-span-2" />
+            <Field id="signatoryName" label="Signatory name" required persist />
+            <Field id="signatoryDesignation" label="Signatory designation" required persist />
+            <Field id="poshName" label="Grievance contact (name / committee)" required persist />
+            <Field id="poshEmail" label="Grievance contact email" type="email" required persist />
+            <Field id="jurisdiction" label="Court jurisdiction (city, state)" required persist class="sm:col-span-2" />
+          </div>
+        </fieldset>
+
+        <button
+          type="submit"
+          class="inline-flex items-center justify-center rounded-lg bg-blue px-6 py-3 text-sm font-semibold text-white shadow-sm hover:bg-blue-hover"
+        >
+          Generate offer letter
+        </button>
+      </form>
+
+      <div class="rounded-xl border border-border bg-white p-6 shadow-sm sm:p-8 lg:sticky lg:top-24">
+        <div class="flex items-center justify-between gap-3">
+          <h2 class="text-xl">Preview</h2>
+          <div id="download-actions" class="hidden items-center gap-2">
+            <a
+              id="download-pdf"
+              class="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-blue px-4 py-2 text-sm font-semibold text-white hover:bg-blue-hover"
+              href="#"
+              role="button"
+            >
+              <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M10 2a1 1 0 0 1 1 1v8.6l2.3-2.3a1 1 0 1 1 1.4 1.4l-4 4a1 1 0 0 1-1.4 0l-4-4a1 1 0 1 1 1.4-1.4L9 11.6V3a1 1 0 0 1 1-1ZM4 15a1 1 0 0 1 1 1v1h10v-1a1 1 0 1 1 2 0v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-1a1 1 0 0 1 1-1Z"/></svg>
+              <span id="download-pdf-label">Download PDF</span>
+            </a>
+            <a
+              id="download-link"
+              class="inline-flex items-center gap-2 rounded-lg bg-navy px-4 py-2 text-sm font-semibold text-white hover:bg-blue"
+              href="#"
+            >
+              <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M10 2a1 1 0 0 1 1 1v8.6l2.3-2.3a1 1 0 1 1 1.4 1.4l-4 4a1 1 0 0 1-1.4 0l-4-4a1 1 0 1 1 1.4-1.4L9 11.6V3a1 1 0 0 1 1-1ZM4 15a1 1 0 0 1 1 1v1h10v-1a1 1 0 1 1 2 0v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-1a1 1 0 0 1 1-1Z"/></svg>
+              Download DOCX
+            </a>
+          </div>
+        </div>
+        <p id="preview-placeholder" class="mt-4 text-sm text-text-muted">
+          Your generated offer letter will appear here.
+        </p>
+        <p id="preview-warning" class="mt-4 hidden rounded-lg bg-amber-50 p-3 text-sm text-amber-900"></p>
+        <div
+          id="preview-body"
+          class="mt-4 hidden max-h-[75vh] overflow-auto rounded-lg bg-slate-100 p-2"
+        >
+        </div>
+      </div>
+    </div>
+  </Section>
+</Layout>
+
+<style is:global>
+  /* Keep layout identical between the live preview and the canvas capture used for PDF. */
+  #preview-body section.docx * {
+    font-variant-ligatures: none;
+    font-kerning: none;
+    hyphens: manual;
+    -webkit-hyphens: manual;
+  }
+</style>
+
+<script>
+  import { renderAsync } from "docx-preview";
+  import { generateLetter, hasTemplateRules } from "../lib/offer-letter";
+
+  const form = document.getElementById("offer-form") as HTMLFormElement;
+  const typeSelect = document.getElementById("employmentType") as HTMLSelectElement;
+  const typeNote = document.getElementById("type-note") as HTMLElement;
+  const modeSelect = document.getElementById("mode") as HTMLSelectElement;
+  const stipendSelect = document.getElementById("stipendType") as HTMLSelectElement;
+  const downloadLink = document.getElementById("download-link") as HTMLAnchorElement;
+  const downloadPdf = document.getElementById("download-pdf") as HTMLAnchorElement;
+  const downloadPdfLabel = document.getElementById("download-pdf-label") as HTMLElement;
+  const downloadActions = document.getElementById("download-actions") as HTMLElement;
+  const placeholder = document.getElementById("preview-placeholder") as HTMLElement;
+  const warning = document.getElementById("preview-warning") as HTMLElement;
+  const previewBody = document.getElementById("preview-body") as HTMLElement;
+
+  const wrapper = (id: string) => document.getElementById(id)!.parentElement as HTMLElement;
+  const value = (id: string) => (document.getElementById(id) as HTMLInputElement).value;
+  const setRequired = (id: string, on: boolean) => {
+    (document.getElementById(id) as HTMLInputElement).required = on;
+  };
+
+  // Remember the company-level fields between sessions.
+  const persisted = form.querySelectorAll<HTMLInputElement>("[data-persist]");
+  persisted.forEach((input) => {
+    try {
+      const saved = localStorage.getItem(`offer:${input.id}`);
+      if (saved) input.value = saved;
+    } catch {}
+    input.addEventListener("input", () => {
+      try {
+        localStorage.setItem(`offer:${input.id}`, input.value);
+      } catch {}
+    });
+  });
+
+  function syncConditionalFields() {
+    const needsLocation = modeSelect.value !== "Remote";
+    wrapper("location").classList.toggle("hidden", !needsLocation);
+    setRequired("location", modeSelect.value === "On-site");
+
+    const paid = stipendSelect.value === "paid";
+    wrapper("stipendAmount").classList.toggle("hidden", !paid);
+    wrapper("payDay").classList.toggle("hidden", !paid);
+    setRequired("stipendAmount", paid);
+    setRequired("payDay", paid);
+  }
+  modeSelect.addEventListener("change", syncConditionalFields);
+  stipendSelect.addEventListener("change", syncConditionalFields);
+  syncConditionalFields();
+
+  function templateReady(): boolean {
+    const option = typeSelect.selectedOptions[0];
+    return Boolean(option && option.dataset.hasTemplate === "true" && hasTemplateRules(typeSelect.value));
+  }
+
+  typeSelect.addEventListener("change", () => {
+    const ready = templateReady();
+    typeNote.classList.toggle("hidden", ready);
+    if (!ready) {
+      typeNote.textContent = `No letter template is available for "${typeSelect.selectedOptions[0].text.replace(" (template not added yet)", "")}" yet. Add a .docx template to its folder inside offerletter/.`;
+    }
+  });
+
+  let objectUrl: string | null = null;
+  let baseName = "Offer-Letter";
+
+  // Scale the fixed-width A4 pages down to the preview panel.
+  function fitPreview(scale?: number) {
+    const wrapper = previewBody.querySelector<HTMLElement>(".docx-wrapper");
+    if (!wrapper) return;
+    const page = wrapper.querySelector<HTMLElement>("section.docx");
+    const natural = page ? parseFloat(page.style.width) || 794 : 794;
+    const available = previewBody.clientWidth - 16;
+    wrapper.style.zoom = String(scale ?? Math.min(1, available / (natural + 60)));
+  }
+  window.addEventListener("resize", () => fitPreview());
+
+  // Renders each A4 page of the preview to canvas and saves them as a PDF.
+  downloadPdf.addEventListener("click", async (event) => {
+    event.preventDefault();
+    const section = previewBody.querySelector<HTMLElement>("section.docx");
+    if (!section || downloadPdf.dataset.busy) return;
+    downloadPdf.dataset.busy = "1";
+    downloadPdfLabel.textContent = "Preparing PDF…";
+    try {
+      const [{ default: html2canvas }, { jsPDF }] = await Promise.all([import("html2canvas"), import("jspdf")]);
+      fitPreview(1);
+      const RENDER_SCALE = 2;
+      const canvas = await html2canvas(section, { scale: RENDER_SCALE, backgroundColor: "#ffffff", useCORS: true });
+      const ctx = canvas.getContext("2d")!;
+
+      // A canvas row is blank when every pixel in it is (near) white.
+      const rowIsBlank = (row: number) => {
+        const data = ctx.getImageData(0, row, canvas.width, 1).data;
+        for (let i = 0; i < data.length; i += 4) {
+          if (data[i] < 245 || data[i + 1] < 245 || data[i + 2] < 245) return false;
+        }
+        return true;
+      };
+      // Finds a cut position (canvas rows) inside a white gap between text lines, searching upwards from `limit`.
+      const findGap = (from: number, limit: number, minGap: number) => {
+        let gap = 0;
+        for (let row = limit; row > from + (limit - from) * 0.5; row--) {
+          gap = rowIsBlank(row) ? gap + 1 : 0;
+          if (gap >= minGap) return row + Math.floor(gap / 2);
+        }
+        return null;
+      };
+      // Section headings ("3. Title") as canvas rows, so a heading is never stranded at a page foot.
+      const secRect = section.getBoundingClientRect();
+      const rowsPerPx = canvas.height / secRect.height;
+      const headingTops = [...section.querySelectorAll<HTMLElement>("article p")]
+        .filter((el) => /^\d+\.\s/.test(el.textContent ?? "") && !el.closest("td"))
+        .map((el) => (el.getBoundingClientRect().top - secRect.top) * rowsPerPx);
+      const findCut = (from: number, limit: number) => {
+        const end = findGap(from, limit, 6 * RENDER_SCALE) ?? limit;
+        const stranded = headingTops.find((top) => top > from && top < end && end - top < 70 * RENDER_SCALE);
+        if (stranded === undefined) return end;
+        return findGap(from, stranded + 6 * RENDER_SCALE, 6 * RENDER_SCALE) ?? end;
+      };
+
+      const pdf = new jsPDF({ unit: "pt", format: "a4", compress: true });
+      const pageW = pdf.internal.pageSize.getWidth();
+      const pageH = pdf.internal.pageSize.getHeight();
+      const margin = 40;
+      const ptPerPx = pageW / (canvas.width / RENDER_SCALE);
+      const maxSlicePx = (pageH - margin * 2) / ptPerPx;
+
+      const maxSliceRows = Math.floor(maxSlicePx * RENDER_SCALE);
+      let y = 0;
+      while (y < canvas.height - 1) {
+        const limit = y + maxSliceRows;
+        const end = limit >= canvas.height ? canvas.height : findCut(y, limit);
+        const rows = end - y;
+        const slice = document.createElement("canvas");
+        slice.width = canvas.width;
+        slice.height = rows;
+        slice.getContext("2d")!.drawImage(canvas, 0, y, canvas.width, rows, 0, 0, canvas.width, rows);
+        if (y > 0) pdf.addPage();
+        pdf.addImage(slice.toDataURL("image/jpeg", 0.95), "JPEG", 0, margin, pageW, (rows / RENDER_SCALE) * ptPerPx);
+        y = end;
+      }
+      pdf.save(`${baseName}.pdf`);
+    } finally {
+      fitPreview();
+      delete downloadPdf.dataset.busy;
+      downloadPdfLabel.textContent = "Download PDF";
+    }
+  });
+
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if (!form.reportValidity()) return;
+    if (!templateReady()) {
+      typeSelect.dispatchEvent(new Event("change"));
+      return;
+    }
+    if (value("endDate") < value("startDate")) {
+      (document.getElementById("endDate") as HTMLInputElement).setCustomValidity("End date must be after the start date.");
+      form.reportValidity();
+      (document.getElementById("endDate") as HTMLInputElement).setCustomValidity("");
+      return;
+    }
+
+    const type = typeSelect.value;
+    const values = Object.fromEntries(
+      [...new FormData(form).entries()].filter(([, v]) => typeof v === "string") as [string, string][],
+    );
+
+    try {
+      const response = await fetch(`/offer-templates/${type}.docx`);
+      if (!response.ok) throw new Error(`Could not load the ${type} template (${response.status}).`);
+      const template = await response.arrayBuffer();
+
+      const { blob, leftovers } = await generateLetter(type, template, values);
+
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+      objectUrl = URL.createObjectURL(blob);
+      const safeName = values.candidateName.trim().replace(/[^A-Za-z0-9]+/g, "-").replace(/^-|-$/g, "");
+      baseName = `${typeSelect.selectedOptions[0].text}-Offer-Letter-${safeName}`;
+      downloadLink.href = objectUrl;
+      downloadLink.download = `${baseName}.docx`;
+      downloadActions.classList.remove("hidden");
+      downloadActions.classList.add("flex");
+
+      previewBody.innerHTML = "";
+      previewBody.classList.remove("hidden");
+      placeholder.classList.add("hidden");
+      await renderAsync(blob, previewBody, undefined, { inWrapper: true, breakPages: true, ignoreLastRenderedPageBreak: true, ignoreHeight: true });
+      fitPreview();
+
+      warning.classList.toggle("hidden", leftovers.length === 0);
+      warning.textContent = leftovers.length ? `Unfilled placeholders remain in the letter: ${leftovers.join(", ")}` : "";
+    } catch (error) {
+      warning.classList.remove("hidden");
+      warning.textContent = error instanceof Error ? error.message : "Could not generate the letter.";
+    }
+  });
+</script>

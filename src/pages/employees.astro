@@ -1,0 +1,371 @@
+---
+import Layout from "../layouts/Layout.astro";
+import Section from "../components/Section.astro";
+import Field from "../components/Field.astro";
+import { EMPLOYEE_TYPES, WORKING_MODES } from "../data/employees";
+
+const selectClass = "mt-1.5 w-full rounded-lg border border-border bg-white px-3.5 py-2.5 text-sm text-text focus-visible:border-blue";
+---
+
+<Layout title="Employees | Sloud Solutions Portal">
+  <div id="app" class="hidden">
+    <Section background="white" maxWidth="narrow" class="text-center">
+      <p class="text-sm font-semibold uppercase tracking-wider text-blue">Team</p>
+      <h1 class="mt-4 text-4xl font-bold leading-tight sm:text-5xl">Employees</h1>
+      <p class="mx-auto mt-6 max-w-2xl text-lg leading-relaxed">Everyone at Sloud Solutions: role, skills, and how to reach them.</p>
+    </Section>
+
+    <Section background="alt">
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <h2 class="text-xl">Team members <span id="count" class="text-sm font-normal text-text-muted"></span></h2>
+        <div class="flex flex-wrap gap-2">
+          <input
+            id="search"
+            type="search"
+            placeholder="Search name, role or skill"
+            aria-label="Search employees"
+            class="w-56 rounded-lg border border-border bg-white px-3 py-2 text-sm focus-visible:border-blue"
+          />
+          <select id="filter-type" class="rounded-lg border border-border bg-white px-3 py-2 text-sm" aria-label="Filter by type">
+            <option value="">All types</option>
+            {EMPLOYEE_TYPES.map((t) => <option>{t}</option>)}
+          </select>
+          <button
+            id="toggle-form"
+            type="button"
+            class="rounded-lg bg-blue px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-hover"
+            aria-expanded="false"
+            aria-controls="employee-form-wrap"
+          >
+            + Add employee
+          </button>
+        </div>
+      </div>
+
+      <div id="employee-form-wrap" class="mt-6 hidden">
+        <form id="employee-form" class="rounded-xl border border-border bg-white p-6 shadow-sm" novalidate>
+          <h2 class="text-xl">Add employee</h2>
+          <div class="mt-5 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            <Field id="name" label="Full name" required />
+            <Field id="role" label="Role / designation" required placeholder="e.g. Cloud Engineer" />
+            <div>
+              <label for="type" class="block text-sm font-medium text-navy">Type <span class="text-red-600" aria-hidden="true">*</span></label>
+              <select id="type" name="type" required class={selectClass}>
+                {EMPLOYEE_TYPES.map((t) => <option>{t}</option>)}
+              </select>
+            </div>
+            <Field id="skills" label="Skill set" placeholder="Comma separated, e.g. AWS, Terraform" class="lg:col-span-2" />
+            <div>
+              <label for="workingMode" class="block text-sm font-medium text-navy">Working mode <span class="text-red-600" aria-hidden="true">*</span></label>
+              <select id="workingMode" name="workingMode" required class={selectClass}>
+                {WORKING_MODES.map((m) => <option>{m}</option>)}
+              </select>
+            </div>
+            <Field id="email" label="Email" type="email" required />
+            <Field id="phone" label="Phone" type="tel" />
+            <Field id="location" label="Location" placeholder="City, Country" />
+            <Field id="joined" label="Joining date" type="date" required />
+            <Field id="workDashboard" label="Work dashboard link" placeholder="https://… (optional, add later)" />
+            <div>
+              <label for="photo" class="block text-sm font-medium text-navy">Profile picture <span class="font-normal text-text-muted">(optional)</span></label>
+              <input
+                id="photo"
+                type="file"
+                accept="image/*"
+                class="mt-1.5 w-full rounded-lg border border-border bg-white px-3 py-2 text-sm file:mr-3 file:rounded-md file:border-0 file:bg-bg-alt file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-navy"
+              />
+            </div>
+          </div>
+          <div class="mt-6 flex items-center gap-4">
+            <button type="submit" class="rounded-lg bg-blue px-6 py-3 text-sm font-semibold text-white shadow-sm hover:bg-blue-hover">
+              Save employee
+            </button>
+            <p class="text-xs text-text-muted">Demo mode: entries are kept in this browser only until real storage is connected.</p>
+          </div>
+        </form>
+      </div>
+
+      <div id="cards" class="mt-6 grid gap-6 sm:grid-cols-2 xl:grid-cols-3"></div>
+      <p id="empty" class="mt-10 hidden text-center text-sm text-text-muted">No employees match your search.</p>
+    </Section>
+  </div>
+</Layout>
+
+<style is:global>
+  @keyframes card-in {
+    from {
+      opacity: 0;
+      transform: translateY(18px) scale(0.97);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  .emp-card {
+    animation: card-in 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+    transition:
+      transform 0.25s ease,
+      box-shadow 0.25s ease,
+      border-color 0.25s ease;
+  }
+  .emp-card:hover,
+  .emp-card:focus-within {
+    transform: translateY(-6px);
+    border-color: color-mix(in srgb, var(--color-blue) 45%, white);
+    box-shadow: 0 18px 36px -14px rgb(16 42 67 / 0.28);
+  }
+  .emp-card .emp-avatar {
+    transition: transform 0.3s ease;
+  }
+  .emp-card:hover .emp-avatar {
+    transform: scale(1.08) rotate(-3deg);
+  }
+  .emp-card .emp-accent {
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 0.35s ease;
+  }
+  .emp-card:hover .emp-accent,
+  .emp-card:focus-within .emp-accent {
+    transform: scaleX(1);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .emp-card,
+    .emp-card .emp-avatar,
+    .emp-card .emp-accent {
+      animation: none;
+      transition: none;
+    }
+    .emp-card:hover,
+    .emp-card:focus-within {
+      transform: none;
+    }
+  }
+</style>
+
+<script>
+  import { requireLogin } from "../lib/auth";
+  import { EMPLOYEES, type Employee } from "../data/employees";
+
+  if (requireLogin()) {
+    document.getElementById("app")!.classList.remove("hidden");
+
+    const STORE_KEY = "sloud:employees:v2";
+    const load = (): Employee[] => {
+      try {
+        const saved = localStorage.getItem(STORE_KEY);
+        if (saved) return JSON.parse(saved) as Employee[];
+      } catch {}
+      return structuredClone(EMPLOYEES);
+    };
+    const save = () => {
+      try {
+        localStorage.setItem(STORE_KEY, JSON.stringify(employees));
+      } catch {}
+    };
+
+    let employees = load();
+    const $ = (id: string) => document.getElementById(id)!;
+    const cards = $("cards");
+    const search = $("search") as HTMLInputElement;
+    const filter = $("filter-type") as HTMLSelectElement;
+    const form = $("employee-form") as HTMLFormElement;
+    const formWrap = $("employee-form-wrap");
+    const toggle = $("toggle-form");
+    const photoInput = $("photo") as HTMLInputElement;
+
+    const typeBadge: Record<string, string> = {
+      "Full-time": "bg-blue/10 text-blue",
+      "Part-time": "bg-cyan/20 text-navy",
+      Intern: "bg-amber-100 text-amber-900",
+      Contractor: "bg-slate-100 text-slate-700",
+    };
+    const gradients = [
+      "from-blue to-cyan",
+      "from-navy to-blue",
+      "from-emerald-500 to-cyan",
+      "from-violet-500 to-blue",
+      "from-rose-500 to-amber-400",
+    ];
+    const fmtDate = (iso: string) =>
+      new Date(`${iso}T00:00:00`).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+    const initials = (name: string) =>
+      name
+        .replace(/\(.*?\)/g, "")
+        .trim()
+        .split(/\s+/)
+        .slice(0, 2)
+        .map((part) => part[0]?.toUpperCase() ?? "")
+        .join("");
+    const gradientFor = (name: string) => gradients[[...name].reduce((sum, ch) => sum + ch.charCodeAt(0), 0) % gradients.length];
+
+    // Tiny DOM helper so user-entered text is always set as text, never as HTML.
+    function el<K extends keyof HTMLElementTagNameMap>(tag: K, className = "", text?: string): HTMLElementTagNameMap[K] {
+      const node = document.createElement(tag);
+      if (className) node.className = className;
+      if (text !== undefined) node.textContent = text;
+      return node;
+    }
+
+    function detail(label: string, value: string, href?: string) {
+      const row = el("div", "flex gap-2 text-sm");
+      row.append(el("dt", "w-16 shrink-0 text-xs font-semibold uppercase tracking-wide text-text-muted", label));
+      const dd = el("dd", "min-w-0 break-words text-text");
+      if (href) {
+        const a = el("a", "text-blue hover:underline", value);
+        a.href = href;
+        dd.append(a);
+      } else {
+        dd.textContent = value || "–";
+      }
+      row.append(dd);
+      return row;
+    }
+
+    function buildCard(e: Employee, index: number) {
+      const card = el("article", "emp-card relative overflow-hidden rounded-xl border border-border bg-white p-6 shadow-sm");
+      card.style.animationDelay = `${Math.min(index, 8) * 70}ms`;
+      card.append(el("span", "emp-accent absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-blue to-cyan"));
+
+      // Header: avatar, name, role, badges
+      const head = el("div", "flex items-start gap-4");
+      let avatar: HTMLElement;
+      if (e.photo) {
+        const img = el("img", "emp-avatar h-14 w-14 shrink-0 rounded-full object-cover ring-2 ring-white shadow");
+        img.src = e.photo;
+        img.alt = `${e.name} profile picture`;
+        avatar = img;
+      } else {
+        avatar = el(
+          "div",
+          `emp-avatar flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-gradient-to-br ${gradientFor(e.name)} text-lg font-bold text-white shadow`,
+          initials(e.name),
+        );
+        avatar.setAttribute("aria-hidden", "true");
+      }
+      const who = el("div", "min-w-0 flex-1");
+      who.append(el("h3", "truncate text-lg font-semibold text-navy", e.name), el("p", "text-sm text-text-muted", e.role));
+      const badges = el("div", "mt-2 flex flex-wrap gap-1.5");
+      badges.append(
+        el("span", `rounded-full px-2.5 py-0.5 text-xs font-medium ${typeBadge[e.type] ?? ""}`, e.type),
+        el("span", "rounded-full bg-bg-alt px-2.5 py-0.5 text-xs font-medium text-navy", e.workingMode),
+      );
+      who.append(badges);
+
+      const remove = el("button", "rounded-md p-1 text-text-muted hover:bg-red-50 hover:text-red-600", "✕");
+      remove.type = "button";
+      remove.title = `Remove ${e.name}`;
+      remove.setAttribute("aria-label", `Remove ${e.name}`);
+      remove.addEventListener("click", () => {
+        if (!confirm(`Remove ${e.name}?`)) return;
+        employees = employees.filter((x) => x.id !== e.id);
+        save();
+        render(false);
+      });
+      head.append(avatar, who, remove);
+
+      // Skills
+      const skills = el("div", "mt-4 flex flex-wrap gap-1.5");
+      if (e.skills.length) e.skills.forEach((s) => skills.append(el("span", "rounded-md bg-blue/5 px-2 py-1 text-xs font-medium text-blue", s)));
+      else skills.append(el("span", "text-xs text-text-muted", "No skills added"));
+
+      // Details
+      const details = el("dl", "mt-4 space-y-2 border-t border-border pt-4");
+      details.append(
+        detail("Email", e.email, `mailto:${e.email}`),
+        detail("Phone", e.phone, e.phone ? `tel:${e.phone.replace(/\s+/g, "")}` : undefined),
+        detail("Location", e.location),
+        detail("Joined", fmtDate(e.joined)),
+      );
+
+      // Work tracker link
+      let work: HTMLElement;
+      if (/^https?:\/\//i.test(e.workDashboard)) {
+        const a = el("a", "mt-5 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-navy px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue", "Work tracker →");
+        a.href = e.workDashboard;
+        a.target = "_blank";
+        a.rel = "noopener noreferrer";
+        work = a;
+      } else {
+        work = el(
+          "span",
+          "mt-5 inline-flex w-full cursor-not-allowed items-center justify-center gap-2 rounded-lg border border-dashed border-border px-4 py-2.5 text-sm font-medium text-text-muted",
+          "Work tracker · dashboard coming soon",
+        );
+      }
+
+      card.append(head, skills, details, work);
+      return card;
+    }
+
+    function render(animate = true) {
+      const query = search.value.trim().toLowerCase();
+      const shown = employees.filter((e) => {
+        if (filter.value && e.type !== filter.value) return false;
+        if (!query) return true;
+        return [e.name, e.role, ...e.skills].some((text) => text.toLowerCase().includes(query));
+      });
+      $("count").textContent = `(${shown.length})`;
+      $("empty").classList.toggle("hidden", shown.length > 0);
+      cards.replaceChildren(...shown.map((e, i) => buildCard(e, animate ? i : 0)));
+    }
+
+    search.addEventListener("input", () => render(false));
+    filter.addEventListener("change", () => render());
+    toggle.addEventListener("click", () => {
+      const open = formWrap.classList.toggle("hidden") === false;
+      toggle.setAttribute("aria-expanded", String(open));
+      toggle.textContent = open ? "Close form" : "+ Add employee";
+      if (open) (form.elements.namedItem("name") as HTMLInputElement).focus();
+    });
+
+    // Downscale the chosen picture so it stays small in storage.
+    function readPhoto(file: File | undefined): Promise<string> {
+      if (!file) return Promise.resolve("");
+      return new Promise((resolve) => {
+        const url = URL.createObjectURL(file);
+        const img = new Image();
+        img.onload = () => {
+          const size = 128;
+          const canvas = document.createElement("canvas");
+          canvas.width = canvas.height = size;
+          const side = Math.min(img.width, img.height);
+          canvas.getContext("2d")!.drawImage(img, (img.width - side) / 2, (img.height - side) / 2, side, side, 0, 0, size, size);
+          URL.revokeObjectURL(url);
+          resolve(canvas.toDataURL("image/jpeg", 0.8));
+        };
+        img.onerror = () => {
+          URL.revokeObjectURL(url);
+          resolve("");
+        };
+        img.src = url;
+      });
+    }
+
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      if (!form.reportValidity()) return;
+      const v = Object.fromEntries([...new FormData(form).entries()].filter(([, val]) => typeof val === "string")) as Record<string, string>;
+      employees.push({
+        id: `e${Date.now()}`,
+        name: v.name.trim(),
+        role: v.role.trim(),
+        type: v.type as Employee["type"],
+        skills: (v.skills ?? "").split(",").map((s) => s.trim()).filter(Boolean),
+        workingMode: v.workingMode as Employee["workingMode"],
+        email: v.email.trim(),
+        phone: (v.phone ?? "").trim(),
+        location: (v.location ?? "").trim(),
+        joined: v.joined,
+        photo: await readPhoto(photoInput.files?.[0]),
+        workDashboard: (v.workDashboard ?? "").trim(),
+      });
+      save();
+      form.reset();
+      render();
+    });
+
+    render();
+  }
+</script>

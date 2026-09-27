@@ -1,0 +1,58 @@
+---
+import Layout from "../layouts/Layout.astro";
+import Section from "../components/Section.astro";
+import Field from "../components/Field.astro";
+---
+
+<Layout title="Log in | Sloud Solutions Portal">
+  <Section background="alt" maxWidth="narrow">
+    <div class="mx-auto max-w-md rounded-xl border border-border bg-white p-6 shadow-sm sm:p-8">
+      <h1 class="text-2xl">Log in</h1>
+      <p class="mt-2 text-sm text-text-muted">Sign in to open the Expense Tracker and Employee details.</p>
+      <form id="login-form" class="mt-6 space-y-5" novalidate>
+        <Field id="username" label="Username" required />
+        <div>
+          <label for="password" class="block text-sm font-medium text-navy">Password <span class="text-red-600" aria-hidden="true">*</span></label>
+          <input
+            id="password"
+            name="password"
+            type="password"
+            required
+            autocomplete="current-password"
+            class="mt-1.5 w-full rounded-lg border border-border bg-white px-3.5 py-2.5 text-sm text-text focus-visible:border-blue"
+          />
+        </div>
+        <p id="login-error" class="hidden rounded-lg bg-red-50 p-3 text-sm text-red-800" role="alert">Incorrect username or password.</p>
+        <button type="submit" class="w-full rounded-lg bg-blue px-6 py-3 text-sm font-semibold text-white shadow-sm hover:bg-blue-hover">
+          Log in
+        </button>
+      </form>
+      <p class="mt-5 rounded-lg bg-amber-50 p-3 text-xs text-amber-900">
+        Demo login only (username <strong>admin</strong>, password <strong>sloud@123</strong>). Real authentication will replace this when the backend is added.
+      </p>
+    </div>
+  </Section>
+</Layout>
+
+<script>
+  import { login, isLoggedIn } from "../lib/auth";
+
+  const params = new URLSearchParams(location.search);
+  const next = params.get("next");
+  // Only allow same-site paths as a redirect target.
+  const target = next && next.startsWith("/") && !next.startsWith("//") ? next : "/expenses";
+  if (isLoggedIn()) location.replace(target);
+
+  const form = document.getElementById("login-form") as HTMLFormElement;
+  const error = document.getElementById("login-error") as HTMLElement;
+  form.addEventListener("submit", (event) => {
+    event.preventDefault();
+    if (!form.reportValidity()) return;
+    const data = new FormData(form);
+    if (login(String(data.get("username")).trim(), String(data.get("password")))) {
+      location.href = target;
+    } else {
+      error.classList.remove("hidden");
+    }
+  });
+</script>

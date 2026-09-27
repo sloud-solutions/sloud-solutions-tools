@@ -1,0 +1,48 @@
+---
+interface Props {
+  id: string;
+  label: string;
+  type?: "text" | "email" | "tel" | "date" | "number";
+  required?: boolean;
+  placeholder?: string;
+  value?: string;
+  list?: string;
+  min?: string;
+  max?: string;
+  persist?: boolean;
+  class?: string;
+}
+
+const {
+  id,
+  label,
+  type = "text",
+  required = false,
+  placeholder,
+  value,
+  list,
+  min,
+  max,
+  persist = false,
+  class: className = "",
+} = Astro.props;
+---
+
+<div class={className}>
+  <label for={id} class="block text-sm font-medium text-navy">
+    {label}{required && <span class="text-red-600" aria-hidden="true"> *</span>}
+  </label>
+  <input
+    id={id}
+    name={id}
+    type={type}
+    required={required}
+    placeholder={placeholder}
+    value={value}
+    list={list}
+    min={min}
+    max={max}
+    data-persist={persist ? "" : undefined}
+    class="mt-1.5 w-full rounded-lg border border-border bg-white px-3.5 py-2.5 text-sm text-text focus-visible:border-blue"
+  />
+</div>

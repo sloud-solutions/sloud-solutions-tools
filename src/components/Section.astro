@@ -1,0 +1,19 @@
+---
+interface Props {
+  id?: string;
+  background?: "white" | "alt";
+  maxWidth?: "default" | "narrow";
+  class?: string;
+}
+
+const { id, background = "white", maxWidth = "default", class: className = "" } = Astro.props;
+
+const backgroundClass = { white: "bg-white", alt: "bg-bg-alt" }[background];
+const maxWidthClass = { default: "max-w-[1200px]", narrow: "max-w-[800px]" }[maxWidth];
+---
+
+<section id={id} class:list={["section-py", backgroundClass, className]}>
+  <div class:list={["mx-auto px-4 sm:px-6 lg:px-8", maxWidthClass]}>
+    <slot />
+  </div>
+</section>

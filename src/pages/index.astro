@@ -1,0 +1,70 @@
+---
+import Layout from "../layouts/Layout.astro";
+import Section from "../components/Section.astro";
+import Icon from "../components/Icon.astro";
+import type { IconName } from "../components/Icon.astro";
+
+const cards: { href: string; title: string; description: string; icon: IconName }[] = [
+  {
+    href: "/offer-letter",
+    title: "Offer Letter",
+    description: "Generate offer letters for new hires and interns.",
+    icon: "file-text",
+  },
+  {
+    href: "/company-policy",
+    title: "Company Policy",
+    description: "Read company policies and find contact details.",
+    icon: "shield-check",
+  },
+  {
+    href: "/clients",
+    title: "Clients",
+    description: "See our clients and the work we do for them.",
+    icon: "users",
+  },
+  {
+    href: "/expenses",
+    title: "Expense Tracker",
+    description: "Record and review company purchases (login required).",
+    icon: "receipt",
+  },
+  {
+    href: "/employees",
+    title: "Employees",
+    description: "Employee details, roles and types (login required).",
+    icon: "id-card",
+  },
+];
+---
+
+<Layout>
+  <Section background="white" maxWidth="narrow" class="text-center">
+    <p class="text-sm font-semibold uppercase tracking-wider text-blue">Internal Portal</p>
+    <h1 class="mt-4 text-4xl font-bold leading-tight sm:text-5xl">Sloud Solutions Tools</h1>
+    <p class="mx-auto mt-6 max-w-2xl text-lg leading-relaxed">Choose what you need below.</p>
+  </Section>
+
+  <Section background="alt">
+    <div class="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+      {
+        cards.map((card) => (
+          <a
+            href={card.href}
+            class="group flex flex-col rounded-xl border border-border bg-white p-8 shadow-sm hover:-translate-y-1 hover:shadow-lg"
+          >
+            <span class="flex h-12 w-12 items-center justify-center rounded-xl bg-blue/10 text-blue">
+              <Icon name={card.icon} class="h-6 w-6" />
+            </span>
+            <h2 class="mt-5 text-xl group-hover:text-blue">{card.title}</h2>
+            <p class="mt-2 flex-1 text-sm leading-relaxed">{card.description}</p>
+            <span class="mt-5 inline-flex items-center gap-1.5 text-sm font-semibold text-blue">
+              Open
+              <Icon name="arrow-right" class="h-4 w-4" />
+            </span>
+          </a>
+        ))
+      }
+    </div>
+  </Section>
+</Layout>

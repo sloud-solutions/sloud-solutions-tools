@@ -1,0 +1,231 @@
+---
+import Layout from "../layouts/Layout.astro";
+import Section from "../components/Section.astro";
+import Field from "../components/Field.astro";
+import { EXPENSE_CATEGORIES, PAYMENT_STATUSES } from "../data/expenses";
+
+const today = new Date().toISOString().slice(0, 10);
+const selectClass = "mt-1.5 w-full rounded-lg border border-border bg-white px-3.5 py-2.5 text-sm text-text focus-visible:border-blue";
+---
+
+<Layout title="Expense Tracker | Sloud Solutions Portal">
+  <div id="app" class="hidden">
+    <Section background="white" maxWidth="narrow" class="text-center">
+      <p class="text-sm font-semibold uppercase tracking-wider text-blue">Finance</p>
+      <h1 class="mt-4 text-4xl font-bold leading-tight sm:text-5xl">Expense Tracker</h1>
+      <p class="mx-auto mt-6 max-w-2xl text-lg leading-relaxed">Record every company purchase and keep them in one place.</p>
+    </Section>
+
+    <Section background="alt">
+      <div class="grid gap-4 sm:grid-cols-3">
+        <div class="rounded-xl border border-border bg-white p-5 shadow-sm">
+          <p class="text-xs font-semibold uppercase tracking-wide text-text-muted">Total spend</p>
+          <p id="stat-total" class="mt-2 text-2xl font-bold text-navy">–</p>
+        </div>
+        <div class="rounded-xl border border-border bg-white p-5 shadow-sm">
+          <p class="text-xs font-semibold uppercase tracking-wide text-text-muted">This month</p>
+          <p id="stat-month" class="mt-2 text-2xl font-bold text-navy">–</p>
+        </div>
+        <div class="rounded-xl border border-border bg-white p-5 shadow-sm">
+          <p class="text-xs font-semibold uppercase tracking-wide text-text-muted">Awaiting payment / reimbursement</p>
+          <p id="stat-open" class="mt-2 text-2xl font-bold text-navy">–</p>
+        </div>
+      </div>
+
+      <div class="mt-8 grid items-start gap-8 lg:grid-cols-[minmax(0,5fr)_minmax(0,2fr)]">
+        <div class="rounded-xl border border-border bg-white shadow-sm">
+          <div class="flex flex-wrap items-center justify-between gap-3 border-b border-border p-5">
+            <h2 class="text-xl">Purchases <span id="count" class="text-sm font-normal text-text-muted"></span></h2>
+            <div class="flex gap-2">
+              <select id="filter-category" class="rounded-lg border border-border bg-white px-3 py-2 text-sm" aria-label="Filter by category">
+                <option value="">All categories</option>
+                {EXPENSE_CATEGORIES.map((c) => <option>{c}</option>)}
+              </select>
+              <select id="filter-status" class="rounded-lg border border-border bg-white px-3 py-2 text-sm" aria-label="Filter by status">
+                <option value="">All statuses</option>
+                {PAYMENT_STATUSES.map((s) => <option>{s}</option>)}
+              </select>
+            </div>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-sm">
+              <thead class="bg-bg-alt text-xs uppercase tracking-wide text-text-muted">
+                <tr>
+                  <th class="px-3 py-3 font-semibold">Date</th>
+                  <th class="px-3 py-3 font-semibold">Item</th>
+                  <th class="px-3 py-3 font-semibold">Category</th>
+                  <th class="px-3 py-3 font-semibold">Paid by</th>
+                  <th class="px-3 py-3 text-right font-semibold">Amount</th>
+                  <th class="px-3 py-3 font-semibold">Status</th>
+                  <th class="px-3 py-3"><span class="sr-only">Actions</span></th>
+                </tr>
+              </thead>
+              <tbody id="rows" class="divide-y divide-border"></tbody>
+              <tfoot>
+                <tr class="border-t border-border bg-bg-alt">
+                  <td colspan="4" class="px-3 py-3 text-right text-xs font-semibold uppercase tracking-wide text-text-muted">Total shown</td>
+                  <td id="shown-total" class="px-3 py-3 text-right font-semibold text-navy"></td>
+                  <td colspan="2"></td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+
+        <form id="expense-form" class="space-y-5 rounded-xl border border-border bg-white p-6 shadow-sm lg:sticky lg:top-24" novalidate>
+          <h2 class="text-xl">Add purchase</h2>
+          <Field id="date" label="Purchase date" type="date" required value={today} />
+          <Field id="item" label="Item / description" required placeholder="e.g. Laptop, AWS bill" />
+          <Field id="vendor" label="Vendor" required />
+          <div>
+            <label for="category" class="block text-sm font-medium text-navy">Category <span class="text-red-600" aria-hidden="true">*</span></label>
+            <select id="category" name="category" required class={selectClass}>
+              {EXPENSE_CATEGORIES.map((c) => <option>{c}</option>)}
+            </select>
+          </div>
+          <Field id="amount" label="Amount (INR)" type="number" required min="1" />
+          <Field id="paidBy" label="Paid by" required placeholder="e.g. Archana, Company card" />
+          <div>
+            <label for="status" class="block text-sm font-medium text-navy">Status</label>
+            <select id="status" name="status" class={selectClass}>
+              {PAYMENT_STATUSES.map((s) => <option>{s}</option>)}
+            </select>
+          </div>
+          <Field id="notes" label="Notes" placeholder="Invoice number, remarks" />
+          <button type="submit" class="w-full rounded-lg bg-blue px-6 py-3 text-sm font-semibold text-white shadow-sm hover:bg-blue-hover">
+            Add purchase
+          </button>
+          <p class="text-xs text-text-muted">Demo mode: entries are kept in this browser only until real storage is connected.</p>
+        </form>
+      </div>
+    </Section>
+  </div>
+</Layout>
+
+<script>
+  import { requireLogin } from "../lib/auth";
+  import { EXPENSES, type Expense } from "../data/expenses";
+
+  if (requireLogin()) {
+    document.getElementById("app")!.classList.remove("hidden");
+
+    const STORE_KEY = "sloud:expenses";
+    const load = (): Expense[] => {
+      try {
+        const saved = localStorage.getItem(STORE_KEY);
+        if (saved) return JSON.parse(saved) as Expense[];
+      } catch {}
+      return [...EXPENSES];
+    };
+    const save = () => {
+      try {
+        localStorage.setItem(STORE_KEY, JSON.stringify(expenses));
+      } catch {}
+    };
+
+    let expenses = load();
+    const $ = (id: string) => document.getElementById(id)!;
+    const rows = $("rows");
+    const filterCategory = $("filter-category") as HTMLSelectElement;
+    const filterStatus = $("filter-status") as HTMLSelectElement;
+    const form = $("expense-form") as HTMLFormElement;
+
+    const inr = (n: number) => `₹${n.toLocaleString("en-IN")}`;
+    const fmtDate = (iso: string) =>
+      new Date(`${iso}T00:00:00`).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+    const statusClass: Record<string, string> = {
+      Paid: "bg-emerald-100 text-emerald-800",
+      Pending: "bg-amber-100 text-amber-900",
+      Reimbursable: "bg-blue/10 text-blue",
+    };
+
+    const cell = (text: string, className = "") => {
+      const td = document.createElement("td");
+      td.className = `px-3 py-3 ${className}`;
+      td.textContent = text;
+      return td;
+    };
+
+    function renderStats() {
+      const monthPrefix = new Date().toISOString().slice(0, 7);
+      const sum = (list: Expense[]) => list.reduce((total, e) => total + e.amount, 0);
+      $("stat-total").textContent = inr(sum(expenses));
+      $("stat-month").textContent = inr(sum(expenses.filter((e) => e.date.startsWith(monthPrefix))));
+      $("stat-open").textContent = inr(sum(expenses.filter((e) => e.status !== "Paid")));
+    }
+
+    function render() {
+      const shown = expenses
+        .filter((e) => (!filterCategory.value || e.category === filterCategory.value) && (!filterStatus.value || e.status === filterStatus.value))
+        .sort((a, b) => b.date.localeCompare(a.date));
+      $("count").textContent = `(${shown.length})`;
+      $("shown-total").textContent = inr(shown.reduce((total, e) => total + e.amount, 0));
+
+      rows.replaceChildren(
+        ...shown.map((e) => {
+          const tr = document.createElement("tr");
+
+          const item = document.createElement("td");
+          item.className = "px-3 py-3";
+          item.innerHTML = "<div class='font-medium text-navy'></div><div class='text-xs text-text-muted'></div>";
+          item.children[0].textContent = e.item;
+          item.children[1].textContent = [e.vendor, e.notes].filter(Boolean).join(" · ");
+
+          const statusTd = document.createElement("td");
+          statusTd.className = "px-3 py-3";
+          const badge = document.createElement("span");
+          badge.className = `rounded-full px-2.5 py-1 text-xs font-medium ${statusClass[e.status] ?? ""}`;
+          badge.textContent = e.status;
+          statusTd.append(badge);
+
+          const actions = document.createElement("td");
+          actions.className = "px-3 py-3 text-right";
+          const remove = document.createElement("button");
+          remove.type = "button";
+          remove.className = "text-xs font-medium text-red-600 hover:underline";
+          remove.textContent = "Delete";
+          remove.addEventListener("click", () => {
+            if (!confirm(`Delete "${e.item}"?`)) return;
+            expenses = expenses.filter((x) => x.id !== e.id);
+            save();
+            renderAll();
+          });
+          actions.append(remove);
+
+          tr.append(cell(fmtDate(e.date), "whitespace-nowrap"), item, cell(e.category), cell(e.paidBy), cell(inr(e.amount), "text-right font-medium text-navy whitespace-nowrap"), statusTd, actions);
+          return tr;
+        }),
+      );
+    }
+
+    const renderAll = () => {
+      renderStats();
+      render();
+    };
+
+    filterCategory.addEventListener("change", render);
+    filterStatus.addEventListener("change", render);
+    form.addEventListener("submit", (event) => {
+      event.preventDefault();
+      if (!form.reportValidity()) return;
+      const v = Object.fromEntries(new FormData(form).entries()) as Record<string, string>;
+      expenses.push({
+        id: `x${Date.now()}`,
+        date: v.date,
+        item: v.item.trim(),
+        vendor: v.vendor.trim(),
+        category: v.category as Expense["category"],
+        amount: Number(v.amount),
+        paidBy: v.paidBy.trim(),
+        status: v.status as Expense["status"],
+        notes: (v.notes ?? "").trim(),
+      });
+      save();
+      form.reset();
+      (form.elements.namedItem("date") as HTMLInputElement).value = new Date().toISOString().slice(0, 10);
+      renderAll();
+    });
+
+    renderAll();
+  }
+</script>
