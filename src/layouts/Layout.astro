@@ -1,5 +1,6 @@
 ---
 import "../styles/global.css";
+import Icon from "../components/Icon.astro";
 
 interface Props {
   title?: string;
@@ -72,23 +73,32 @@ const nav = [
 
             <div
               id="account-dropdown"
-              class="modal-panel absolute right-0 top-full z-50 mt-2 hidden w-72 origin-top-right rounded-xl border border-border bg-white p-4 shadow-lg"
+              class="modal-panel absolute right-0 top-full z-50 mt-2 hidden w-80 origin-top-right rounded-xl border border-border bg-white p-4 shadow-lg"
               role="menu"
             >
-              <div class="flex items-center gap-3">
-                <span id="account-initials-lg" class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-blue text-base font-bold text-white"></span>
+              <div class="flex items-start gap-3">
+                <span id="account-initials-lg" class="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-blue text-base font-bold text-white"></span>
                 <div class="min-w-0">
-                  <p id="account-name" class="truncate text-sm font-semibold text-navy"></p>
-                  <p id="account-email" class="truncate text-xs text-text-muted"></p>
+                  <p id="account-name" class="truncate text-base font-semibold text-navy"></p>
+                  <p id="account-job-title" class="truncate text-sm text-text-muted"></p>
+                  <span id="account-role-badge" class="mt-1.5 inline-block rounded-full px-2.5 py-0.5 text-xs font-semibold"></span>
                 </div>
               </div>
-              <p class="mt-3">
-                <span id="account-role-badge" class="rounded-full px-2.5 py-1 text-xs font-semibold"></span>
+
+              <div class="my-4 border-t border-border"></div>
+
+              <p class="text-xs font-semibold uppercase tracking-wide text-text-muted">Contact details</p>
+              <p class="mt-2 flex items-center gap-2.5 text-sm text-text">
+                <Icon name="mail" class="h-4 w-4 shrink-0 text-text-muted" />
+                <span id="account-email" class="truncate"></span>
               </p>
+
+              <div class="my-4 border-t border-border"></div>
+
               <button
                 id="logout-button"
                 type="button"
-                class="mt-4 w-full rounded-lg border border-border px-3 py-2 text-sm font-medium text-navy hover:bg-bg-alt hover:text-blue"
+                class="w-full rounded-lg border border-border px-3 py-2 text-sm font-medium text-navy hover:bg-bg-alt hover:text-blue"
               >
                 Log out
               </button>
@@ -114,6 +124,7 @@ const nav = [
       const accountInitials = document.getElementById("account-initials") as HTMLElement;
       const accountInitialsLg = document.getElementById("account-initials-lg") as HTMLElement;
       const accountName = document.getElementById("account-name") as HTMLElement;
+      const accountJobTitle = document.getElementById("account-job-title") as HTMLElement;
       const accountEmail = document.getElementById("account-email") as HTMLElement;
       const accountRoleBadge = document.getElementById("account-role-badge") as HTMLElement;
       const logoutButton = document.getElementById("logout-button") as HTMLButtonElement;
@@ -162,6 +173,8 @@ const nav = [
             accountInitials.textContent = initials;
             accountInitialsLg.textContent = initials;
             accountName.textContent = me.name || me.email || "";
+            accountJobTitle.textContent = me.jobTitle;
+            accountJobTitle.classList.toggle("hidden", !me.jobTitle);
             accountEmail.textContent = me.email ?? "";
             accountRoleBadge.textContent = me.role;
             accountRoleBadge.className =

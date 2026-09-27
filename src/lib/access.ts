@@ -21,6 +21,8 @@ export interface Me {
   access: PageKey[];
   /** Falls back to the email if no Employees-table row was found (e.g. seed-time Admin). */
   name: string;
+  /** Job title / designation (e.g. "Founder and CEO") — distinct from `role` above. */
+  jobTitle: string;
 }
 
 const CACHE_KEY = "sloud:me";
