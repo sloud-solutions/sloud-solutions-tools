@@ -77,10 +77,12 @@ const selectClass = "mt-1.5 w-full rounded-lg border border-border bg-white px-3
         </div>
       </div>
       <p class="mt-1 hidden text-xs text-text-muted" data-role="task-description"></p>
+      <p class="mt-1 hidden text-xs italic text-text-muted" data-role="task-notes"></p>
       <div class="mt-3 flex flex-wrap items-center gap-1.5" data-role="task-badges"></div>
       <select class="mt-3 w-full rounded-md border border-border bg-white px-2 py-1.5 text-xs font-medium text-navy" data-role="task-status" aria-label="Move task">
         {TASK_STATUSES.map((s) => <option value={s}>{STATUS_LABELS[s]}</option>)}
       </select>
+      <p class="mt-2 text-[11px] text-text-muted" data-role="task-created"></p>
     </article>
   </template>
 
@@ -126,6 +128,10 @@ const selectClass = "mt-1.5 w-full rounded-lg border border-border bg-white px-3
         <div>
           <label for="task-description-input" class="block text-sm font-medium text-navy">Description</label>
           <textarea id="task-description-input" name="description" rows="2" class="mt-1.5 w-full rounded-lg border border-border bg-white px-3.5 py-2.5 text-sm text-text focus-visible:border-blue"></textarea>
+        </div>
+        <div>
+          <label for="task-notes-input" class="block text-sm font-medium text-navy">Notes</label>
+          <textarea id="task-notes-input" name="notes" rows="2" placeholder="Ongoing updates, blockers, links…" class="mt-1.5 w-full rounded-lg border border-border bg-white px-3.5 py-2.5 text-sm text-text focus-visible:border-blue"></textarea>
         </div>
         <div>
           <label for="task-assignee" class="block text-sm font-medium text-navy">Assignee</label>
@@ -276,6 +282,8 @@ const selectClass = "mt-1.5 w-full rounded-lg border border-border bg-white px-3
       Low: "bg-bg-alt text-text-muted",
     };
 
+    const fmtDate = (iso: string) => new Date(iso).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+
     function renderColumns() {
       columns.classList.remove("hidden");
       columns.replaceChildren(
@@ -307,11 +315,18 @@ const selectClass = "mt-1.5 w-full rounded-lg border border-border bg-white px-3
         desc.textContent = t.description;
         desc.classList.remove("hidden");
       }
+      const notes = root.querySelector<HTMLElement>('[data-role="task-notes"]')!;
+      if (t.notes) {
+        notes.textContent = `Notes: ${t.notes}`;
+        notes.classList.remove("hidden");
+      }
 
       const badges = root.querySelector<HTMLElement>('[data-role="task-badges"]')!;
       if (t.assignee) badges.append(badge(nameForEmail(t.assignee), "bg-blue/10 text-blue"));
       if (t.priority) badges.append(badge(t.priority, priorityClass[t.priority] ?? "bg-bg-alt text-text-muted"));
       if (t.dueDate) badges.append(badge(`Due ${t.dueDate}`, "bg-bg-alt text-text-muted"));
+
+      root.querySelector<HTMLElement>('[data-role="task-created"]')!.textContent = `Created ${fmtDate(t.createdAt)}`;
 
       const statusSelect = root.querySelector<HTMLSelectElement>('[data-role="task-status"]')!;
       statusSelect.value = t.status;
@@ -494,6 +509,7 @@ const selectClass = "mt-1.5 w-full rounded-lg border border-border bg-white px-3
       if (task) {
         (taskForm.elements.namedItem("task-title") as HTMLInputElement).value = task.title;
         (taskForm.elements.namedItem("description") as HTMLTextAreaElement).value = task.description;
+        (taskForm.elements.namedItem("notes") as HTMLTextAreaElement).value = task.notes;
         taskAssigneeSelect.value = task.assignee;
         (taskForm.elements.namedItem("priority") as HTMLSelectElement).value = task.priority;
         (taskForm.elements.namedItem("task-due-date") as HTMLInputElement).value = task.dueDate;
@@ -515,6 +531,7 @@ const selectClass = "mt-1.5 w-full rounded-lg border border-border bg-white px-3
       const payload = {
         title: v["task-title"].trim(),
         description: (v.description ?? "").trim(),
+        notes: (v.notes ?? "").trim(),
         status: v.status as TaskStatus,
         assignee: taskAssigneeSelect.value,
         priority: v.priority as WorkTask["priority"],

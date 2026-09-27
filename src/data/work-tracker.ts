@@ -30,6 +30,8 @@ export interface WorkTask {
   boardId: string;
   title: string;
   description: string;
+  /** Free-form ongoing notes/updates, distinct from the initial description. */
+  notes: string;
   status: TaskStatus;
   /** Assignee's email; empty if unassigned. */
   assignee: string;
