@@ -11,19 +11,25 @@ const selectClass = "mt-1.5 w-full rounded-lg border border-border bg-white px-3
 <Layout title="Work Tracker | Sloud Solutions Portal">
   <div id="app" class="hidden">
     <Section background="white" maxWidth="narrow" class="animate-in text-center">
-      <p class="text-sm font-semibold uppercase tracking-wider text-blue">Delivery</p>
-      <h1 class="mt-4 text-4xl font-bold leading-tight sm:text-5xl">Work Tracker</h1>
+      <span class="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-blue/10 text-blue">
+        <Icon name="kanban" class="h-7 w-7" />
+      </span>
+      <p class="mt-4 text-sm font-semibold uppercase tracking-wider text-blue">Delivery</p>
+      <h1 class="mt-2 text-4xl font-bold leading-tight sm:text-5xl">Work Tracker</h1>
       <p class="mx-auto mt-6 max-w-2xl text-lg leading-relaxed">Sprint boards for your team, one board per team or sprint.</p>
     </Section>
 
-    <Section background="alt">
+    <Section background="alt" maxWidth="wide">
       <p id="error-banner" class="mb-6 hidden rounded-lg bg-red-50 p-3 text-sm text-red-800" role="alert"></p>
       <p id="loading-note" class="text-sm text-text-muted">Loading…</p>
 
       <div id="content" class="hidden">
-        <div class="flex flex-wrap items-center justify-between gap-3">
+        <div class="animate-in flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-white p-4 shadow-sm">
           <div class="flex flex-wrap items-center gap-2">
-            <select id="board-select" class="min-w-[220px] rounded-lg border border-border bg-white px-3 py-2 text-sm font-medium text-navy" aria-label="Select board"></select>
+            <span class="hidden h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue/10 text-blue sm:flex">
+              <Icon name="kanban" class="h-5 w-5" />
+            </span>
+            <select id="board-select" class="min-w-[220px] rounded-lg border border-border bg-white px-3 py-2 text-sm font-medium text-navy focus-visible:border-blue" aria-label="Select board"></select>
             <span id="board-team-badge" class="hidden rounded-full bg-bg-alt px-2.5 py-1 text-xs font-medium text-text-muted"></span>
           </div>
           <div class="flex flex-wrap gap-2">
@@ -37,9 +43,13 @@ const selectClass = "mt-1.5 w-full rounded-lg border border-border bg-white px-3
           </div>
         </div>
 
-        <p id="no-boards" class="mt-10 hidden text-center text-sm text-text-muted">
-          No boards yet — create one to start tracking your team's work.
-        </p>
+        <div id="no-boards" class="animate-in mt-10 hidden flex-col items-center rounded-xl border border-dashed border-border bg-white/60 py-14 text-center">
+          <span class="flex h-14 w-14 items-center justify-center rounded-2xl bg-blue/10 text-blue">
+            <Icon name="kanban" class="h-7 w-7" />
+          </span>
+          <p class="mt-4 text-sm font-medium text-navy">No boards yet</p>
+          <p class="mt-1 text-sm text-text-muted">Create one to start tracking your team's work.</p>
+        </div>
 
         <div id="board-description" class="mt-3 hidden text-sm text-text-muted"></div>
 
@@ -49,9 +59,12 @@ const selectClass = "mt-1.5 w-full rounded-lg border border-border bg-white px-3
   </div>
 
   <template id="column-template">
-    <div class="flex flex-col rounded-xl border border-border bg-white shadow-sm">
+    <div class="wt-column flex flex-col rounded-xl border border-border bg-white shadow-sm">
       <div class="flex items-center justify-between gap-2 border-b border-border p-4">
-        <h2 class="text-sm font-semibold uppercase tracking-wide text-navy" data-role="column-title"></h2>
+        <div class="flex items-center gap-2">
+          <span class="wt-column-dot h-2.5 w-2.5 rounded-full"></span>
+          <h2 class="text-sm font-semibold uppercase tracking-wide text-navy" data-role="column-title"></h2>
+        </div>
         <div class="flex items-center gap-2">
           <span class="rounded-full bg-bg-alt px-2 py-0.5 text-xs font-medium text-text-muted" data-role="column-count"></span>
           <button type="button" class="rounded-md px-1.5 text-sm font-semibold text-text-muted hover:bg-bg-alt hover:text-blue" data-role="column-add" aria-label="Add task">
@@ -61,6 +74,10 @@ const selectClass = "mt-1.5 w-full rounded-lg border border-border bg-white px-3
       </div>
       <div class="flex-1 space-y-3 p-4" data-role="column-body"></div>
     </div>
+  </template>
+
+  <template id="empty-column-template">
+    <p class="rounded-lg border border-dashed border-border py-6 text-center text-xs text-text-muted">No tasks yet</p>
   </template>
 
   <template id="task-card-template">
@@ -78,7 +95,11 @@ const selectClass = "mt-1.5 w-full rounded-lg border border-border bg-white px-3
       </div>
       <p class="mt-1 hidden text-xs text-text-muted" data-role="task-description"></p>
       <p class="mt-1 hidden text-xs italic text-text-muted" data-role="task-notes"></p>
-      <div class="mt-3 flex flex-wrap items-center gap-1.5" data-role="task-badges"></div>
+      <div class="mt-3 hidden items-center gap-2" data-role="task-assignee-row">
+        <span class="task-avatar flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white" data-role="task-avatar"></span>
+        <span class="truncate text-xs font-medium text-navy" data-role="task-assignee-name"></span>
+      </div>
+      <div class="mt-2 flex flex-wrap items-center gap-1.5" data-role="task-badges"></div>
       <select class="mt-3 w-full rounded-md border border-border bg-white px-2 py-1.5 text-xs font-medium text-navy" data-role="task-status" aria-label="Move task">
         {TASK_STATUSES.map((s) => <option value={s}>{STATUS_LABELS[s]}</option>)}
       </select>
@@ -167,6 +188,49 @@ const selectClass = "mt-1.5 w-full rounded-lg border border-border bg-white px-3
   </div>
 </Layout>
 
+<style is:global>
+  /* Status accent colors, shared by column headers and task cards. */
+  .wt-column[data-status="todo"],
+  .task-card[data-status="todo"] {
+    --wt-accent: #94a3b8;
+  }
+  .wt-column[data-status="in-progress"],
+  .task-card[data-status="in-progress"] {
+    --wt-accent: #2563eb;
+  }
+  .wt-column[data-status="completed"],
+  .task-card[data-status="completed"] {
+    --wt-accent: #10b981;
+  }
+  .wt-column[data-status="blocked"],
+  .task-card[data-status="blocked"] {
+    --wt-accent: #ef4444;
+  }
+
+  .wt-column {
+    border-top: 3px solid var(--wt-accent, var(--color-border));
+  }
+  .wt-column-dot {
+    background-color: var(--wt-accent, var(--color-border));
+  }
+
+  .task-card {
+    border-left: 3px solid var(--wt-accent, var(--color-border));
+    transition:
+      transform 0.22s ease,
+      box-shadow 0.22s ease,
+      border-color 0.22s ease;
+  }
+  .task-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 14px 28px -14px rgb(16 42 67 / 0.25);
+  }
+
+  .task-avatar {
+    background: linear-gradient(135deg, var(--color-blue), var(--color-cyan));
+  }
+</style>
+
 <script>
   import { requireLogin } from "../lib/auth";
   import { loadMe, hasAccess } from "../lib/access";
@@ -229,6 +293,7 @@ const selectClass = "mt-1.5 w-full rounded-lg border border-border bg-white px-3
 
     const columnTpl = $("column-template") as HTMLTemplateElement;
     const cardTpl = $("task-card-template") as HTMLTemplateElement;
+    const emptyColumnTpl = $("empty-column-template") as HTMLTemplateElement;
 
     let currentBoardId: string | null = null;
     let tasks: WorkTask[] = [];
@@ -283,13 +348,18 @@ const selectClass = "mt-1.5 w-full rounded-lg border border-border bg-white px-3
     };
 
     const fmtDate = (iso: string) => new Date(iso).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+    const initialsOf = (name: string) =>
+      name.trim().split(/\s+/).slice(0, 2).map((part) => part[0]?.toUpperCase() ?? "").join("") || "?";
 
     function renderColumns() {
       columns.classList.remove("hidden");
       columns.replaceChildren(
-        ...TASK_STATUSES.map((status) => {
+        ...TASK_STATUSES.map((status, colIndex) => {
           const col = columnTpl.content.cloneNode(true) as DocumentFragment;
           const root = col.firstElementChild as HTMLElement;
+          root.dataset.status = status;
+          root.classList.add("animate-in");
+          root.style.animationDelay = `${colIndex * 60}ms`;
           const title = root.querySelector<HTMLElement>('[data-role="column-title"]')!;
           const count = root.querySelector<HTMLElement>('[data-role="column-count"]')!;
           const addButton = root.querySelector<HTMLButtonElement>('[data-role="column-add"]')!;
@@ -300,15 +370,22 @@ const selectClass = "mt-1.5 w-full rounded-lg border border-border bg-white px-3
           count.textContent = String(inColumn.length);
           addButton.addEventListener("click", () => openTaskModal(null, status));
 
-          body.replaceChildren(...inColumn.map((t) => buildTaskCard(t)));
+          if (inColumn.length) {
+            body.replaceChildren(...inColumn.map((t, i) => buildTaskCard(t, i)));
+          } else {
+            body.replaceChildren(emptyColumnTpl.content.cloneNode(true));
+          }
           return root;
         }),
       );
     }
 
-    function buildTaskCard(t: WorkTask) {
+    function buildTaskCard(t: WorkTask, index = 0) {
       const node = cardTpl.content.cloneNode(true) as DocumentFragment;
       const root = node.firstElementChild as HTMLElement;
+      root.dataset.status = t.status;
+      root.classList.add("animate-in");
+      root.style.animationDelay = `${Math.min(index, 8) * 50}ms`;
       root.querySelector<HTMLElement>('[data-role="task-title"]')!.textContent = t.title;
       const desc = root.querySelector<HTMLElement>('[data-role="task-description"]')!;
       if (t.description) {
@@ -321,8 +398,16 @@ const selectClass = "mt-1.5 w-full rounded-lg border border-border bg-white px-3
         notes.classList.remove("hidden");
       }
 
+      if (t.assignee) {
+        const assigneeRow = root.querySelector<HTMLElement>('[data-role="task-assignee-row"]')!;
+        const name = nameForEmail(t.assignee);
+        root.querySelector<HTMLElement>('[data-role="task-avatar"]')!.textContent = initialsOf(name);
+        root.querySelector<HTMLElement>('[data-role="task-assignee-name"]')!.textContent = name;
+        assigneeRow.classList.remove("hidden");
+        assigneeRow.classList.add("flex");
+      }
+
       const badges = root.querySelector<HTMLElement>('[data-role="task-badges"]')!;
-      if (t.assignee) badges.append(badge(nameForEmail(t.assignee), "bg-blue/10 text-blue"));
       if (t.priority) badges.append(badge(t.priority, priorityClass[t.priority] ?? "bg-bg-alt text-text-muted"));
       if (t.dueDate) badges.append(badge(`Due ${t.dueDate}`, "bg-bg-alt text-text-muted"));
 
@@ -450,6 +535,7 @@ const selectClass = "mt-1.5 w-full rounded-lg border border-border bg-white px-3
         populateBoardSelect();
         boardSelect.value = editingBoard ? editingBoard.id : boards[boards.length - 1].id;
         noBoards.classList.add("hidden");
+        noBoards.classList.remove("flex");
         closeModal(boardModal);
         await selectBoard(boardSelect.value);
       } catch (err) {
@@ -478,6 +564,7 @@ const selectClass = "mt-1.5 w-full rounded-lg border border-border bg-white px-3
         await selectBoard(boards[0].id);
       } else {
         noBoards.classList.remove("hidden");
+        noBoards.classList.add("flex");
         await selectBoard(null);
       }
     });
@@ -564,6 +651,7 @@ const selectClass = "mt-1.5 w-full rounded-lg border border-border bg-white px-3
       await selectBoard(boards[0].id);
     } else {
       noBoards.classList.remove("hidden");
+      noBoards.classList.add("flex");
     }
   }
 

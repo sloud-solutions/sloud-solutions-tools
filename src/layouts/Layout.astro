@@ -93,8 +93,12 @@ const nav = [
                 <Icon name="mail" class="h-4 w-4 shrink-0 text-text-muted" />
                 <span id="account-email" class="truncate"></span>
               </p>
-              <p id="account-job-title-row" class="mt-2 flex items-center gap-2.5 text-sm text-text">
+              <p id="account-employee-id-row" class="mt-2 flex items-center gap-2.5 text-sm text-text">
                 <Icon name="id-card" class="h-4 w-4 shrink-0 text-text-muted" />
+                <span id="account-employee-id" class="truncate"></span>
+              </p>
+              <p id="account-job-title-row" class="mt-2 flex items-center gap-2.5 text-sm text-text">
+                <Icon name="file-text" class="h-4 w-4 shrink-0 text-text-muted" />
                 <span id="account-job-title" class="truncate"></span>
               </p>
               <p class="mt-2 flex items-center gap-2.5 text-sm text-text">
@@ -135,6 +139,8 @@ const nav = [
       const accountPhoto = document.getElementById("account-photo") as HTMLImageElement;
       const accountPhotoLg = document.getElementById("account-photo-lg") as HTMLImageElement;
       const accountName = document.getElementById("account-name") as HTMLElement;
+      const accountEmployeeIdRow = document.getElementById("account-employee-id-row") as HTMLElement;
+      const accountEmployeeId = document.getElementById("account-employee-id") as HTMLElement;
       const accountJobTitleRow = document.getElementById("account-job-title-row") as HTMLElement;
       const accountJobTitle = document.getElementById("account-job-title") as HTMLElement;
       const accountEmail = document.getElementById("account-email") as HTMLElement;
@@ -193,6 +199,8 @@ const nav = [
               accountInitialsLg.classList.add("hidden");
             }
             accountName.textContent = me.name || me.email || "";
+            accountEmployeeId.textContent = me.employeeId;
+            accountEmployeeIdRow.classList.toggle("hidden", !me.employeeId);
             accountJobTitle.textContent = me.jobTitle;
             accountJobTitleRow.classList.toggle("hidden", !me.jobTitle);
             accountEmail.textContent = me.email ?? "";

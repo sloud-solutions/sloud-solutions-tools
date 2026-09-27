@@ -14,14 +14,17 @@ const statusClass: Record<string, string> = {
 <Layout title="Clients | Sloud Solutions Portal">
   <div id="app" class="hidden">
     <Section background="white" maxWidth="narrow" class="animate-in text-center">
-      <p class="text-sm font-semibold uppercase tracking-wider text-blue">Clients</p>
-      <h1 class="mt-4 text-4xl font-bold leading-tight sm:text-5xl">Our Clients</h1>
+      <span class="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-blue/10 text-blue">
+        <Icon name="users" class="h-7 w-7" />
+      </span>
+      <p class="mt-4 text-sm font-semibold uppercase tracking-wider text-blue">Clients</p>
+      <h1 class="mt-2 text-4xl font-bold leading-tight sm:text-5xl">Our Clients</h1>
       <p class="mx-auto mt-6 max-w-2xl text-lg leading-relaxed">
         {CLIENTS.length} clients. Placeholder content: replace with the real list.
       </p>
     </Section>
 
-    <Section background="alt">
+    <Section background="alt" maxWidth="wide">
       <div class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
         {
           CLIENTS.map((client, i) => (
