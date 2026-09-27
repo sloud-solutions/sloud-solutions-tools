@@ -4,7 +4,20 @@ interface Props extends astroHTML.JSX.SVGAttributes {
   class?: string;
 }
 
-export type IconName = "file-text" | "shield-check" | "users" | "arrow-right" | "mail" | "phone" | "map-pin" | "check" | "receipt" | "id-card" | "x" | "pencil";
+export type IconName =
+  | "file-text"
+  | "shield-check"
+  | "users"
+  | "arrow-right"
+  | "mail"
+  | "phone"
+  | "map-pin"
+  | "check"
+  | "receipt"
+  | "id-card"
+  | "x"
+  | "pencil"
+  | "kanban";
 
 const { name, class: className = "", ...rest } = Astro.props;
 ---
@@ -93,6 +106,14 @@ const { name, class: className = "", ...rest } = Astro.props;
       <>
         <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
         <path d="M14.5 5.5 18 9" />
+      </>
+    )
+  }
+  {
+    name === "kanban" && (
+      <>
+        <rect x="3.5" y="4.5" width="17" height="15" rx="2" />
+        <path d="M8.5 4.5v8M13 4.5v5M17.5 4.5v11" />
       </>
     )
   }

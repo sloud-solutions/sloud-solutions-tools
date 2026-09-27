@@ -1,0 +1,554 @@
+---
+import Layout from "../layouts/Layout.astro";
+import Section from "../components/Section.astro";
+import Field from "../components/Field.astro";
+import Icon from "../components/Icon.astro";
+import { TASK_STATUSES, STATUS_LABELS, TASK_PRIORITIES } from "../data/work-tracker";
+
+const selectClass = "mt-1.5 w-full rounded-lg border border-border bg-white px-3.5 py-2.5 text-sm text-text focus-visible:border-blue";
+---
+
+<Layout title="Work Tracker | Sloud Solutions Portal">
+  <div id="app" class="hidden">
+    <Section background="white" maxWidth="narrow" class="animate-in text-center">
+      <p class="text-sm font-semibold uppercase tracking-wider text-blue">Delivery</p>
+      <h1 class="mt-4 text-4xl font-bold leading-tight sm:text-5xl">Work Tracker</h1>
+      <p class="mx-auto mt-6 max-w-2xl text-lg leading-relaxed">Sprint boards for your team, one board per team or sprint.</p>
+    </Section>
+
+    <Section background="alt">
+      <p id="error-banner" class="mb-6 hidden rounded-lg bg-red-50 p-3 text-sm text-red-800" role="alert"></p>
+      <p id="loading-note" class="text-sm text-text-muted">Loading…</p>
+
+      <div id="content" class="hidden">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <div class="flex flex-wrap items-center gap-2">
+            <select id="board-select" class="min-w-[220px] rounded-lg border border-border bg-white px-3 py-2 text-sm font-medium text-navy" aria-label="Select board"></select>
+            <span id="board-team-badge" class="hidden rounded-full bg-bg-alt px-2.5 py-1 text-xs font-medium text-text-muted"></span>
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <button id="board-settings-button" type="button" class="hidden inline-flex items-center gap-1.5 rounded-lg border border-border bg-white px-3 py-2 text-sm font-medium text-navy hover:bg-bg-alt">
+              <Icon name="pencil" class="h-4 w-4" />
+              Board settings
+            </button>
+            <button id="new-board-button" type="button" class="inline-flex items-center gap-1.5 rounded-lg bg-blue px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-hover">
+              + New board
+            </button>
+          </div>
+        </div>
+
+        <p id="no-boards" class="mt-10 hidden text-center text-sm text-text-muted">
+          No boards yet — create one to start tracking your team's work.
+        </p>
+
+        <div id="board-description" class="mt-3 hidden text-sm text-text-muted"></div>
+
+        <div id="columns" class="mt-6 hidden grid gap-5 md:grid-cols-2 xl:grid-cols-4"></div>
+      </div>
+    </Section>
+  </div>
+
+  <template id="column-template">
+    <div class="flex flex-col rounded-xl border border-border bg-white shadow-sm">
+      <div class="flex items-center justify-between gap-2 border-b border-border p-4">
+        <h2 class="text-sm font-semibold uppercase tracking-wide text-navy" data-role="column-title"></h2>
+        <div class="flex items-center gap-2">
+          <span class="rounded-full bg-bg-alt px-2 py-0.5 text-xs font-medium text-text-muted" data-role="column-count"></span>
+          <button type="button" class="rounded-md px-1.5 text-sm font-semibold text-text-muted hover:bg-bg-alt hover:text-blue" data-role="column-add" aria-label="Add task">
+            +
+          </button>
+        </div>
+      </div>
+      <div class="flex-1 space-y-3 p-4" data-role="column-body"></div>
+    </div>
+  </template>
+
+  <template id="task-card-template">
+    <article class="task-card rounded-lg border border-border bg-white p-4 shadow-sm">
+      <div class="flex items-start justify-between gap-2">
+        <h3 class="text-sm font-semibold text-navy" data-role="task-title"></h3>
+        <div class="flex shrink-0 items-center gap-1">
+          <button type="button" class="inline-flex h-6 w-6 items-center justify-center rounded-md text-text-muted hover:bg-bg-alt hover:text-blue" data-role="task-edit" aria-label="Edit task">
+            <Icon name="pencil" class="h-3.5 w-3.5" />
+          </button>
+          <button type="button" class="inline-flex h-6 w-6 items-center justify-center rounded-md text-text-muted hover:bg-bg-alt hover:text-red-600" data-role="task-delete" aria-label="Delete task">
+            <Icon name="x" class="h-3.5 w-3.5" />
+          </button>
+        </div>
+      </div>
+      <p class="mt-1 hidden text-xs text-text-muted" data-role="task-description"></p>
+      <div class="mt-3 flex flex-wrap items-center gap-1.5" data-role="task-badges"></div>
+      <select class="mt-3 w-full rounded-md border border-border bg-white px-2 py-1.5 text-xs font-medium text-navy" data-role="task-status" aria-label="Move task">
+        {TASK_STATUSES.map((s) => <option value={s}>{STATUS_LABELS[s]}</option>)}
+      </select>
+    </article>
+  </template>
+
+  <!-- New / edit board -->
+  <div id="board-modal" class="modal-backdrop fixed inset-0 z-50 hidden items-center justify-center bg-navy/40 p-4">
+    <div class="modal-panel w-full max-w-lg rounded-xl bg-white p-6 shadow-2xl sm:p-8">
+      <div class="flex items-start justify-between gap-3">
+        <h2 id="board-modal-heading" class="text-xl">New board</h2>
+        <button id="board-modal-close" type="button" class="rounded-md p-1 text-text-muted hover:bg-bg-alt hover:text-navy" aria-label="Close">✕</button>
+      </div>
+      <form id="board-form" class="mt-5 space-y-4" novalidate>
+        <Field id="board-name" label="Board name" required placeholder="e.g. Platform Team — Sprint 12" />
+        <Field id="board-team" label="Team / label" placeholder="e.g. Platform" />
+        <div>
+          <label for="board-description-input" class="block text-sm font-medium text-navy">Description</label>
+          <textarea id="board-description-input" name="description" rows="2" class="mt-1.5 w-full rounded-lg border border-border bg-white px-3.5 py-2.5 text-sm text-text focus-visible:border-blue"></textarea>
+        </div>
+        <div>
+          <p class="text-sm font-medium text-navy">Members</p>
+          <p class="text-xs text-text-muted">Who besides you can see and use this board.</p>
+          <div id="board-members" class="mt-2 max-h-48 space-y-1.5 overflow-y-auto rounded-lg border border-border p-3"></div>
+        </div>
+        <p id="board-form-error" class="hidden rounded-lg bg-red-50 p-3 text-sm text-red-800" role="alert"></p>
+        <div class="flex items-center gap-4 pt-1">
+          <button id="board-form-submit" type="submit" class="rounded-lg bg-blue px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-hover">
+            Create board
+          </button>
+          <button id="board-delete-button" type="button" class="hidden text-sm font-medium text-red-600 hover:underline">Delete board</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Add / edit task -->
+  <div id="task-modal" class="modal-backdrop fixed inset-0 z-50 hidden items-center justify-center bg-navy/40 p-4">
+    <div class="modal-panel w-full max-w-md rounded-xl bg-white p-6 shadow-2xl sm:p-8">
+      <div class="flex items-start justify-between gap-3">
+        <h2 id="task-modal-heading" class="text-xl">Add task</h2>
+        <button id="task-modal-close" type="button" class="rounded-md p-1 text-text-muted hover:bg-bg-alt hover:text-navy" aria-label="Close">✕</button>
+      </div>
+      <form id="task-form" class="mt-5 space-y-4" novalidate>
+        <Field id="task-title" label="Title" required placeholder="e.g. Set up staging environment" />
+        <div>
+          <label for="task-description-input" class="block text-sm font-medium text-navy">Description</label>
+          <textarea id="task-description-input" name="description" rows="2" class="mt-1.5 w-full rounded-lg border border-border bg-white px-3.5 py-2.5 text-sm text-text focus-visible:border-blue"></textarea>
+        </div>
+        <div>
+          <label for="task-assignee" class="block text-sm font-medium text-navy">Assignee</label>
+          <select id="task-assignee" name="assignee" class={selectClass}>
+            <option value="">Unassigned</option>
+          </select>
+        </div>
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label for="task-priority" class="block text-sm font-medium text-navy">Priority</label>
+            <select id="task-priority" name="priority" class={selectClass}>
+              <option value="">None</option>
+              {TASK_PRIORITIES.map((p) => <option>{p}</option>)}
+            </select>
+          </div>
+          <Field id="task-due-date" label="Due date" type="date" />
+        </div>
+        <div>
+          <label for="task-status" class="block text-sm font-medium text-navy">Status</label>
+          <select id="task-status" name="status" class={selectClass}>
+            {TASK_STATUSES.map((s) => <option value={s}>{STATUS_LABELS[s]}</option>)}
+          </select>
+        </div>
+        <p id="task-form-error" class="hidden rounded-lg bg-red-50 p-3 text-sm text-red-800" role="alert"></p>
+        <div class="flex items-center gap-4 pt-1">
+          <button id="task-form-submit" type="submit" class="rounded-lg bg-blue px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-hover">
+            Add task
+          </button>
+          <button id="task-cancel" type="button" class="text-sm font-medium text-text-muted hover:underline">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</Layout>
+
+<script>
+  import { requireLogin } from "../lib/auth";
+  import { loadMe, hasAccess } from "../lib/access";
+  import { openModal, closeModal } from "../lib/ui";
+  import {
+    listWorkBoards,
+    createWorkBoard,
+    updateWorkBoard,
+    deleteWorkBoard,
+    listWorkTasks,
+    createWorkTask,
+    updateWorkTask,
+    deleteWorkTask,
+    listEmployeeOptions,
+    type EmployeeOption,
+    ApiError,
+  } from "../lib/api";
+  import { TASK_STATUSES, STATUS_LABELS, type TaskStatus, type WorkBoard, type WorkTask } from "../data/work-tracker";
+
+  async function init() {
+    if (!requireLogin()) return;
+
+    const me = await loadMe();
+    if (!hasAccess(me, "work-tracker")) {
+      location.replace("/");
+      return;
+    }
+    document.getElementById("app")!.classList.remove("hidden");
+
+    const $ = (id: string) => document.getElementById(id)!;
+    const loadingNote = $("loading-note");
+    const errorBanner = $("error-banner");
+    const content = $("content");
+    const showError = (message: string) => {
+      errorBanner.textContent = message;
+      errorBanner.classList.remove("hidden");
+    };
+
+    let boards: WorkBoard[] = [];
+    let employeeOptions: EmployeeOption[] = [];
+    try {
+      [boards, employeeOptions] = await Promise.all([listWorkBoards(), listEmployeeOptions()]);
+    } catch (err) {
+      loadingNote.classList.add("hidden");
+      showError(err instanceof ApiError ? err.message : "Could not load the Work Tracker. Please try again.");
+      return;
+    }
+    loadingNote.classList.add("hidden");
+    content.classList.remove("hidden");
+
+    const nameForEmail = (email: string) => employeeOptions.find((o) => o.email === email)?.name ?? email;
+
+    const boardSelect = $("board-select") as HTMLSelectElement;
+    const boardTeamBadge = $("board-team-badge");
+    const boardDescription = $("board-description");
+    const columns = $("columns");
+    const noBoards = $("no-boards");
+    const newBoardButton = $("new-board-button") as HTMLButtonElement;
+    const boardSettingsButton = $("board-settings-button") as HTMLButtonElement;
+
+    const columnTpl = $("column-template") as HTMLTemplateElement;
+    const cardTpl = $("task-card-template") as HTMLTemplateElement;
+
+    let currentBoardId: string | null = null;
+    let tasks: WorkTask[] = [];
+
+    function populateBoardSelect() {
+      boardSelect.replaceChildren(
+        ...boards.map((b) => {
+          const opt = new Option(b.name, b.id);
+          return opt;
+        }),
+      );
+    }
+
+    function canManageBoard(board: WorkBoard) {
+      return me.role === "Admin" || board.owner === me.email;
+    }
+
+    async function selectBoard(boardId: string | null) {
+      currentBoardId = boardId;
+      const board = boards.find((b) => b.id === boardId) ?? null;
+      boardSettingsButton.classList.toggle("hidden", !board || !canManageBoard(board));
+      boardTeamBadge.classList.toggle("hidden", !board?.team);
+      if (board?.team) boardTeamBadge.textContent = board.team;
+      boardDescription.classList.toggle("hidden", !board?.description);
+      boardDescription.textContent = board?.description ?? "";
+
+      if (!board) {
+        columns.classList.add("hidden");
+        return;
+      }
+      errorBanner.classList.add("hidden");
+      try {
+        tasks = await listWorkTasks(board.id);
+      } catch (err) {
+        showError(err instanceof ApiError ? err.message : "Could not load this board's tasks.");
+        return;
+      }
+      renderColumns();
+    }
+
+    function badge(text: string, className: string) {
+      const span = document.createElement("span");
+      span.className = `rounded-full px-2 py-0.5 text-[11px] font-medium ${className}`;
+      span.textContent = text;
+      return span;
+    }
+
+    const priorityClass: Record<string, string> = {
+      High: "bg-red-100 text-red-800",
+      Medium: "bg-amber-100 text-amber-900",
+      Low: "bg-bg-alt text-text-muted",
+    };
+
+    function renderColumns() {
+      columns.classList.remove("hidden");
+      columns.replaceChildren(
+        ...TASK_STATUSES.map((status) => {
+          const col = columnTpl.content.cloneNode(true) as DocumentFragment;
+          const root = col.firstElementChild as HTMLElement;
+          const title = root.querySelector<HTMLElement>('[data-role="column-title"]')!;
+          const count = root.querySelector<HTMLElement>('[data-role="column-count"]')!;
+          const addButton = root.querySelector<HTMLButtonElement>('[data-role="column-add"]')!;
+          const body = root.querySelector<HTMLElement>('[data-role="column-body"]')!;
+
+          title.textContent = STATUS_LABELS[status];
+          const inColumn = tasks.filter((t) => t.status === status);
+          count.textContent = String(inColumn.length);
+          addButton.addEventListener("click", () => openTaskModal(null, status));
+
+          body.replaceChildren(...inColumn.map((t) => buildTaskCard(t)));
+          return root;
+        }),
+      );
+    }
+
+    function buildTaskCard(t: WorkTask) {
+      const node = cardTpl.content.cloneNode(true) as DocumentFragment;
+      const root = node.firstElementChild as HTMLElement;
+      root.querySelector<HTMLElement>('[data-role="task-title"]')!.textContent = t.title;
+      const desc = root.querySelector<HTMLElement>('[data-role="task-description"]')!;
+      if (t.description) {
+        desc.textContent = t.description;
+        desc.classList.remove("hidden");
+      }
+
+      const badges = root.querySelector<HTMLElement>('[data-role="task-badges"]')!;
+      if (t.assignee) badges.append(badge(nameForEmail(t.assignee), "bg-blue/10 text-blue"));
+      if (t.priority) badges.append(badge(t.priority, priorityClass[t.priority] ?? "bg-bg-alt text-text-muted"));
+      if (t.dueDate) badges.append(badge(`Due ${t.dueDate}`, "bg-bg-alt text-text-muted"));
+
+      const statusSelect = root.querySelector<HTMLSelectElement>('[data-role="task-status"]')!;
+      statusSelect.value = t.status;
+      statusSelect.addEventListener("change", async () => {
+        const newStatus = statusSelect.value as TaskStatus;
+        try {
+          const updated = await updateWorkTask(t.id, { status: newStatus });
+          tasks = tasks.map((x) => (x.id === updated.id ? updated : x));
+          renderColumns();
+        } catch (err) {
+          showError(err instanceof ApiError ? err.message : "Could not move that task.");
+          statusSelect.value = t.status;
+        }
+      });
+
+      root.querySelector<HTMLButtonElement>('[data-role="task-edit"]')!.addEventListener("click", () => openTaskModal(t, t.status));
+      root.querySelector<HTMLButtonElement>('[data-role="task-delete"]')!.addEventListener("click", async () => {
+        if (!confirm(`Delete "${t.title}"?`)) return;
+        try {
+          await deleteWorkTask(t.id);
+        } catch (err) {
+          showError(err instanceof ApiError ? err.message : "Could not delete that task.");
+          return;
+        }
+        tasks = tasks.filter((x) => x.id !== t.id);
+        renderColumns();
+      });
+
+      return root;
+    }
+
+    boardSelect.addEventListener("change", () => selectBoard(boardSelect.value || null));
+
+    // --- Board create/settings modal ---
+    const boardModal = $("board-modal");
+    const boardForm = $("board-form") as HTMLFormElement;
+    const boardModalHeading = $("board-modal-heading");
+    const boardFormSubmit = $("board-form-submit") as HTMLButtonElement;
+    const boardFormError = $("board-form-error");
+    const boardMembersContainer = $("board-members");
+    const boardDeleteButton = $("board-delete-button") as HTMLButtonElement;
+    let editingBoard: WorkBoard | null = null;
+
+    function populateBoardMembers(checked: string[]) {
+      boardMembersContainer.replaceChildren(
+        ...employeeOptions.map((o) => {
+          const label = document.createElement("label");
+          label.className = "flex items-center gap-2 text-sm text-text";
+          const box = document.createElement("input");
+          box.type = "checkbox";
+          box.value = o.email;
+          box.className = "h-4 w-4 rounded border-border text-blue focus-visible:ring-blue";
+          box.checked = checked.includes(o.email);
+          label.append(box, document.createTextNode(o.employeeId ? `${o.employeeId} — ${o.name}` : o.name));
+          return label;
+        }),
+      );
+    }
+
+    function openNewBoardModal() {
+      editingBoard = null;
+      boardForm.reset();
+      boardModalHeading.textContent = "New board";
+      boardFormSubmit.textContent = "Create board";
+      boardDeleteButton.classList.add("hidden");
+      boardFormError.classList.add("hidden");
+      populateBoardMembers([]);
+      openModal(boardModal);
+    }
+
+    function openBoardSettingsModal(board: WorkBoard) {
+      editingBoard = board;
+      boardForm.reset();
+      boardModalHeading.textContent = "Board settings";
+      boardFormSubmit.textContent = "Save changes";
+      boardDeleteButton.classList.remove("hidden");
+      boardFormError.classList.add("hidden");
+      (boardForm.elements.namedItem("board-name") as HTMLInputElement).value = board.name;
+      (boardForm.elements.namedItem("board-team") as HTMLInputElement).value = board.team;
+      (boardForm.elements.namedItem("description") as HTMLTextAreaElement).value = board.description;
+      populateBoardMembers(board.members);
+      openModal(boardModal);
+    }
+
+    newBoardButton.addEventListener("click", openNewBoardModal);
+    boardSettingsButton.addEventListener("click", () => {
+      const board = boards.find((b) => b.id === currentBoardId);
+      if (board) openBoardSettingsModal(board);
+    });
+    $("board-modal-close").addEventListener("click", () => closeModal(boardModal));
+    boardModal.addEventListener("click", (e) => {
+      if (e.target === boardModal) closeModal(boardModal);
+    });
+
+    boardForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      if (!boardForm.reportValidity()) return;
+      boardFormError.classList.add("hidden");
+      const v = Object.fromEntries(new FormData(boardForm).entries()) as Record<string, string>;
+      const members = [...boardMembersContainer.querySelectorAll<HTMLInputElement>("input[type=checkbox]:checked")].map((b) => b.value);
+
+      boardFormSubmit.disabled = true;
+      try {
+        if (editingBoard) {
+          const updated = await updateWorkBoard(editingBoard.id, {
+            name: v["board-name"].trim(),
+            team: (v["board-team"] ?? "").trim(),
+            description: (v.description ?? "").trim(),
+            members,
+          });
+          boards = boards.map((b) => (b.id === updated.id ? updated : b));
+        } else {
+          const created = await createWorkBoard({
+            name: v["board-name"].trim(),
+            team: (v["board-team"] ?? "").trim(),
+            description: (v.description ?? "").trim(),
+            members,
+          });
+          boards.push(created);
+        }
+        populateBoardSelect();
+        boardSelect.value = editingBoard ? editingBoard.id : boards[boards.length - 1].id;
+        noBoards.classList.add("hidden");
+        closeModal(boardModal);
+        await selectBoard(boardSelect.value);
+      } catch (err) {
+        boardFormError.textContent = err instanceof ApiError ? err.message : "Could not save that board.";
+        boardFormError.classList.remove("hidden");
+      } finally {
+        boardFormSubmit.disabled = false;
+      }
+    });
+
+    boardDeleteButton.addEventListener("click", async () => {
+      if (!editingBoard) return;
+      if (!confirm(`Delete "${editingBoard.name}"? This also deletes all of its tasks.`)) return;
+      try {
+        await deleteWorkBoard(editingBoard.id);
+      } catch (err) {
+        boardFormError.textContent = err instanceof ApiError ? err.message : "Could not delete that board.";
+        boardFormError.classList.remove("hidden");
+        return;
+      }
+      boards = boards.filter((b) => b.id !== editingBoard!.id);
+      populateBoardSelect();
+      closeModal(boardModal);
+      if (boards.length) {
+        boardSelect.value = boards[0].id;
+        await selectBoard(boards[0].id);
+      } else {
+        noBoards.classList.remove("hidden");
+        await selectBoard(null);
+      }
+    });
+
+    // --- Task add/edit modal ---
+    const taskModal = $("task-modal");
+    const taskForm = $("task-form") as HTMLFormElement;
+    const taskModalHeading = $("task-modal-heading");
+    const taskFormSubmit = $("task-form-submit") as HTMLButtonElement;
+    const taskFormError = $("task-form-error");
+    const taskAssigneeSelect = $("task-assignee") as HTMLSelectElement;
+    let editingTask: WorkTask | null = null;
+
+    function populateAssigneeSelect() {
+      taskAssigneeSelect.replaceChildren(
+        new Option("Unassigned", ""),
+        ...employeeOptions.map((o) => new Option(o.employeeId ? `${o.employeeId} — ${o.name}` : o.name, o.email)),
+      );
+    }
+    populateAssigneeSelect();
+
+    function openTaskModal(task: WorkTask | null, defaultStatus: TaskStatus) {
+      editingTask = task;
+      taskForm.reset();
+      taskFormError.classList.add("hidden");
+      taskModalHeading.textContent = task ? "Edit task" : "Add task";
+      taskFormSubmit.textContent = task ? "Save changes" : "Add task";
+      (taskForm.elements.namedItem("status") as HTMLSelectElement).value = task?.status ?? defaultStatus;
+      if (task) {
+        (taskForm.elements.namedItem("task-title") as HTMLInputElement).value = task.title;
+        (taskForm.elements.namedItem("description") as HTMLTextAreaElement).value = task.description;
+        taskAssigneeSelect.value = task.assignee;
+        (taskForm.elements.namedItem("priority") as HTMLSelectElement).value = task.priority;
+        (taskForm.elements.namedItem("task-due-date") as HTMLInputElement).value = task.dueDate;
+      }
+      openModal(taskModal);
+    }
+
+    $("task-modal-close").addEventListener("click", () => closeModal(taskModal));
+    $("task-cancel").addEventListener("click", () => closeModal(taskModal));
+    taskModal.addEventListener("click", (e) => {
+      if (e.target === taskModal) closeModal(taskModal);
+    });
+
+    taskForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      if (!taskForm.reportValidity() || !currentBoardId) return;
+      taskFormError.classList.add("hidden");
+      const v = Object.fromEntries(new FormData(taskForm).entries()) as Record<string, string>;
+      const payload = {
+        title: v["task-title"].trim(),
+        description: (v.description ?? "").trim(),
+        status: v.status as TaskStatus,
+        assignee: taskAssigneeSelect.value,
+        priority: v.priority as WorkTask["priority"],
+        dueDate: v["task-due-date"] ?? "",
+      };
+
+      taskFormSubmit.disabled = true;
+      try {
+        if (editingTask) {
+          const updated = await updateWorkTask(editingTask.id, payload);
+          tasks = tasks.map((x) => (x.id === updated.id ? updated : x));
+        } else {
+          const created = await createWorkTask(currentBoardId, payload);
+          tasks.push(created);
+        }
+        closeModal(taskModal);
+        renderColumns();
+      } catch (err) {
+        taskFormError.textContent = err instanceof ApiError ? err.message : "Could not save that task.";
+        taskFormError.classList.remove("hidden");
+      } finally {
+        taskFormSubmit.disabled = false;
+      }
+    });
+
+    // --- Initial render ---
+    populateBoardSelect();
+    if (boards.length) {
+      boardSelect.value = boards[0].id;
+      await selectBoard(boards[0].id);
+    } else {
+      noBoards.classList.remove("hidden");
+    }
+  }
+
+  init();
+</script>

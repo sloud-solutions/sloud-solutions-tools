@@ -5,6 +5,7 @@ import { getIdToken, logout } from "./auth";
 import type { Me } from "./access";
 import type { Expense } from "../data/expenses";
 import type { Employee } from "../data/employees";
+import type { WorkBoard, WorkTask } from "../data/work-tracker";
 
 const BASE = import.meta.env.PUBLIC_API_BASE_URL as string;
 
@@ -74,9 +75,10 @@ export interface EmployeeOption {
   id: string;
   employeeId?: string;
   name: string;
+  email: string;
 }
 
-/** Available to anyone with Expense Tracker access (not just Employees access) -- powers the "paid by" dropdown. */
+/** Available to anyone with Expense Tracker or Work Tracker access (not just Employees access) -- powers the "paid by"/assignee/member pickers. */
 export const listEmployeeOptions = () => request<EmployeeOption[]>("/employees");
 
 export interface EmployeeEditPayload {
@@ -131,3 +133,19 @@ export const resetPassword = (email: string, password: string) =>
 /** Admin-only: temporarily enable/disable someone's login without removing them. */
 export const setEmployeeEnabled = (id: string, enabled: boolean) =>
   request<Employee>(`/employees/${encodeURIComponent(id)}`, { method: "PATCH", body: JSON.stringify({ enabled }) });
+
+export const listWorkBoards = () => request<WorkBoard[]>("/work-boards");
+export const createWorkBoard = (payload: Omit<WorkBoard, "id" | "owner" | "createdAt">) =>
+  request<WorkBoard>("/work-boards", { method: "POST", body: JSON.stringify(payload) });
+/** Owner or Admin only. */
+export const updateWorkBoard = (id: string, payload: Partial<Omit<WorkBoard, "id" | "owner" | "createdAt">>) =>
+  request<WorkBoard>(`/work-boards/${encodeURIComponent(id)}`, { method: "PATCH", body: JSON.stringify(payload) });
+/** Owner or Admin only — also deletes every task on the board. */
+export const deleteWorkBoard = (id: string) => request<void>(`/work-boards/${encodeURIComponent(id)}`, { method: "DELETE" });
+
+export const listWorkTasks = (boardId: string) => request<WorkTask[]>(`/work-boards/${encodeURIComponent(boardId)}/tasks`);
+export const createWorkTask = (boardId: string, payload: Omit<WorkTask, "id" | "boardId" | "createdBy" | "createdAt" | "updatedAt">) =>
+  request<WorkTask>(`/work-boards/${encodeURIComponent(boardId)}/tasks`, { method: "POST", body: JSON.stringify(payload) });
+export const updateWorkTask = (id: string, payload: Partial<Omit<WorkTask, "id" | "boardId" | "createdBy" | "createdAt" | "updatedAt">>) =>
+  request<WorkTask>(`/work-tasks/${encodeURIComponent(id)}`, { method: "PATCH", body: JSON.stringify(payload) });
+export const deleteWorkTask = (id: string) => request<void>(`/work-tasks/${encodeURIComponent(id)}`, { method: "DELETE" });

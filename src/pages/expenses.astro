@@ -216,7 +216,7 @@ const maxDocumentMb = DOCUMENT_MAX_BYTES / (1024 * 1024);
       employeeOptions = expenses
         .map((e) => e.paidBy)
         .filter((name) => name && !seen.has(name) && seen.add(name))
-        .map((name) => ({ id: name, name }));
+        .map((name) => ({ id: name, name, email: "" }));
     }
     const paidByLabel = (o: EmployeeOption) => (o.employeeId ? `${o.employeeId} — ${o.name}` : o.name);
     function populatePaidBySelect() {
