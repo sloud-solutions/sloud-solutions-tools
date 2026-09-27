@@ -123,6 +123,38 @@ export function completeNewPassword(newPassword: string): Promise<LoginResult> {
   });
 }
 
+export interface ChangePasswordResult {
+  ok: boolean;
+  message?: string;
+}
+
+/**
+ * Self-service change (not "forgot" — there's no real mailbox to send a reset
+ * code to, so this proves identity with the *current* password instead).
+ * Available from the login page without an existing session.
+ */
+export function changeOwnPassword(username: string, currentPassword: string, newPassword: string): Promise<ChangePasswordResult> {
+  return new Promise((resolve) => {
+    const user = new CognitoUser({ Username: username, Pool: pool });
+    user.setAuthenticationFlowType("USER_PASSWORD_AUTH");
+    const details = new AuthenticationDetails({ Username: username, Password: currentPassword });
+    user.authenticateUser(details, {
+      onSuccess: () => {
+        user.changePassword(currentPassword, newPassword, (err) => {
+          if (err) resolve({ ok: false, message: err.message ?? "Could not change the password." });
+          else resolve({ ok: true });
+        });
+      },
+      onFailure: (err) => {
+        resolve({ ok: false, message: err?.message ?? "Current password is incorrect." });
+      },
+      newPasswordRequired: () => {
+        resolve({ ok: false, message: "This account hasn't been used yet — ask an Admin to set your initial password." });
+      },
+    });
+  });
+}
+
 export function logout(): void {
   pool.getCurrentUser()?.signOut();
   clearSession();

@@ -52,13 +52,6 @@ const statusClass: Record<string, string> = {
     </Section>
   </div>
 
-  <div id="access-denied" class="hidden">
-    <Section background="white" maxWidth="narrow" class="text-center">
-      <h1 class="text-2xl">You don't have access to this page</h1>
-      <p class="mx-auto mt-3 max-w-md text-text">Ask an Admin to grant you access to Clients if you need it.</p>
-      <a href="/" class="mt-6 inline-flex items-center gap-1.5 text-sm font-semibold text-blue hover:text-blue-hover">← Back home</a>
-    </Section>
-  </div>
 </Layout>
 
 <script>
@@ -68,7 +61,11 @@ const statusClass: Record<string, string> = {
   async function init() {
     if (!requireLogin()) return;
     const me = await loadMe();
-    document.getElementById(hasAccess(me, "clients") ? "app" : "access-denied")!.classList.remove("hidden");
+    if (!hasAccess(me, "clients")) {
+      location.replace("/"); // only shows the pages this person actually has, no "denied" message
+      return;
+    }
+    document.getElementById("app")!.classList.remove("hidden");
   }
   init();
 </script>

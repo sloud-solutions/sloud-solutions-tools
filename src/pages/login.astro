@@ -27,6 +27,37 @@ import Field from "../components/Field.astro";
         <button type="submit" class="w-full rounded-lg bg-blue px-6 py-3 text-sm font-semibold text-white shadow-sm hover:bg-blue-hover">
           Log in
         </button>
+        <button
+          id="show-change-password"
+          type="button"
+          class="w-full text-center text-sm font-medium text-blue hover:underline"
+        >
+          Change your password
+        </button>
+      </form>
+
+      <!-- Self-service change, not "forgot": there's no real mailbox to send
+           a reset code to here, so this proves identity with the current
+           password instead of an emailed one. -->
+      <form id="change-password-form" class="mt-6 hidden space-y-5" novalidate>
+        <p class="text-sm text-text">Enter your email, current password, and the new password you want.</p>
+        <Field id="cp-username" label="Email" type="email" required autocomplete="username" />
+        <div>
+          <label for="cp-current" class="block text-sm font-medium text-navy">Current password <span class="text-red-600" aria-hidden="true">*</span></label>
+          <input id="cp-current" name="currentPassword" type="password" required autocomplete="current-password" class="mt-1.5 w-full rounded-lg border border-border bg-white px-3.5 py-2.5 text-sm text-text focus-visible:border-blue" />
+        </div>
+        <div>
+          <label for="cp-new" class="block text-sm font-medium text-navy">New password <span class="text-red-600" aria-hidden="true">*</span></label>
+          <input id="cp-new" name="newPassword" type="password" required minlength="8" autocomplete="new-password" class="mt-1.5 w-full rounded-lg border border-border bg-white px-3.5 py-2.5 text-sm text-text focus-visible:border-blue" />
+        </div>
+        <p id="change-password-error" class="hidden rounded-lg bg-red-50 p-3 text-sm text-red-800" role="alert"></p>
+        <p id="change-password-success" class="hidden rounded-lg bg-emerald-50 p-3 text-sm text-emerald-800" role="status">Password changed — log in with your new password.</p>
+        <button type="submit" class="w-full rounded-lg bg-blue px-6 py-3 text-sm font-semibold text-white shadow-sm hover:bg-blue-hover">
+          Change password
+        </button>
+        <button id="back-to-login" type="button" class="w-full text-center text-sm font-medium text-text-muted hover:underline">
+          ← Back to log in
+        </button>
       </form>
 
       <!-- Shown instead of the form above when Cognito requires a new password
@@ -55,7 +86,7 @@ import Field from "../components/Field.astro";
 </Layout>
 
 <script>
-  import { login, completeNewPassword, isLoggedIn } from "../lib/auth";
+  import { login, completeNewPassword, changeOwnPassword, isLoggedIn } from "../lib/auth";
 
   const params = new URLSearchParams(location.search);
   const next = params.get("next");
@@ -68,6 +99,43 @@ import Field from "../components/Field.astro";
   const loginError = document.getElementById("login-error") as HTMLElement;
   const newPasswordForm = document.getElementById("new-password-form") as HTMLFormElement;
   const newPasswordError = document.getElementById("new-password-error") as HTMLElement;
+  const showChangePassword = document.getElementById("show-change-password") as HTMLButtonElement;
+  const changePasswordForm = document.getElementById("change-password-form") as HTMLFormElement;
+  const changePasswordError = document.getElementById("change-password-error") as HTMLElement;
+  const changePasswordSuccess = document.getElementById("change-password-success") as HTMLElement;
+  const backToLogin = document.getElementById("back-to-login") as HTMLButtonElement;
+
+  showChangePassword.addEventListener("click", () => {
+    loginForm.classList.add("hidden");
+    subtitle.classList.add("hidden");
+    changePasswordSuccess.classList.add("hidden");
+    changePasswordError.classList.add("hidden");
+    changePasswordForm.classList.remove("hidden");
+  });
+  backToLogin.addEventListener("click", () => {
+    changePasswordForm.classList.add("hidden");
+    subtitle.classList.remove("hidden");
+    loginForm.classList.remove("hidden");
+  });
+
+  changePasswordForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if (!changePasswordForm.reportValidity()) return;
+    changePasswordError.classList.add("hidden");
+    const data = new FormData(changePasswordForm);
+    const result = await changeOwnPassword(
+      String(data.get("cp-username")).trim(),
+      String(data.get("currentPassword")),
+      String(data.get("newPassword")),
+    );
+    if (result.ok) {
+      changePasswordForm.reset();
+      changePasswordSuccess.classList.remove("hidden");
+      return;
+    }
+    changePasswordError.textContent = result.message ?? "Could not change the password.";
+    changePasswordError.classList.remove("hidden");
+  });
 
   loginForm.addEventListener("submit", async (event) => {
     event.preventDefault();

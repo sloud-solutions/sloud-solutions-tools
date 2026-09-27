@@ -156,13 +156,6 @@ const legendClass = "text-base font-semibold text-heading";
   </Section>
   </div>
 
-  <div id="access-denied" class="hidden">
-    <Section background="white" maxWidth="narrow" class="text-center">
-      <h1 class="text-2xl">You don't have access to this page</h1>
-      <p class="mx-auto mt-3 max-w-md text-text">Ask an Admin to grant you access to the Offer Letter generator if you need it.</p>
-      <a href="/" class="mt-6 inline-flex items-center gap-1.5 text-sm font-semibold text-blue hover:text-blue-hover">← Back home</a>
-    </Section>
-  </div>
 </Layout>
 
 <style is:global>
@@ -185,7 +178,7 @@ const legendClass = "text-base font-semibold text-heading";
     if (!requireLogin()) return;
     const me = await loadMe();
     if (!hasAccess(me, "offer-letter")) {
-      document.getElementById("access-denied")!.classList.remove("hidden");
+      location.replace("/"); // only shows the pages this person actually has, no "denied" message
       return;
     }
     document.getElementById("app")!.classList.remove("hidden");

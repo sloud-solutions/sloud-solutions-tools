@@ -46,7 +46,7 @@ const selectClass = "mt-1.5 w-full rounded-lg border border-border bg-white px-3
       <!-- Admin-only: creates both the person's login and their directory row. -->
       <div id="employee-form-wrap" class="mt-6 hidden">
         <form id="employee-form" class="rounded-xl border border-border bg-white p-6 shadow-sm" novalidate>
-          <h2 class="text-xl">Add employee</h2>
+          <h2 id="form-heading" class="text-xl">Add employee</h2>
           <div class="mt-5 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             <Field id="name" label="Full name" required />
             <Field id="role" label="Role / designation" required placeholder="e.g. Cloud Engineer" />
@@ -63,18 +63,19 @@ const selectClass = "mt-1.5 w-full rounded-lg border border-border bg-white px-3
                 {WORKING_MODES.map((m) => <option>{m}</option>)}
               </select>
             </div>
-            <Field id="email" label="Email (their login username)" type="email" required />
-            <div>
-              <label for="password" class="block text-sm font-medium text-navy">Initial password <span class="text-red-600" aria-hidden="true">*</span></label>
-              <input
-                id="password"
-                name="password"
-                type="text"
-                required
-                minlength="8"
-                placeholder="Share this with them directly"
-                class="mt-1.5 w-full rounded-lg border border-border bg-white px-3.5 py-2.5 text-sm text-text focus-visible:border-blue"
-              />
+            <div id="add-only-fields" class="contents">
+              <Field id="email" label="Email (their login username)" type="email" required />
+              <div>
+                <label for="password" class="block text-sm font-medium text-navy">Initial password <span class="text-red-600" aria-hidden="true">*</span></label>
+                <input
+                  id="password"
+                  name="password"
+                  type="text"
+                  minlength="8"
+                  placeholder="Share this with them directly"
+                  class="mt-1.5 w-full rounded-lg border border-border bg-white px-3.5 py-2.5 text-sm text-text focus-visible:border-blue"
+                />
+              </div>
             </div>
             <Field id="phone" label="Phone" type="tel" />
             <Field id="location" label="Location" placeholder="City, Country" />
@@ -115,10 +116,10 @@ const selectClass = "mt-1.5 w-full rounded-lg border border-border bg-white px-3
 
           <p id="form-error" class="mt-4 hidden rounded-lg bg-red-50 p-3 text-sm text-red-800" role="alert"></p>
           <div class="mt-6 flex items-center gap-4">
-            <button type="submit" class="rounded-lg bg-blue px-6 py-3 text-sm font-semibold text-white shadow-sm hover:bg-blue-hover">
+            <button id="form-submit" type="submit" class="rounded-lg bg-blue px-6 py-3 text-sm font-semibold text-white shadow-sm hover:bg-blue-hover">
               Save employee
             </button>
-            <p class="text-xs text-text-muted">No email is sent — share this password with them yourself.</p>
+            <p id="form-note" class="text-xs text-text-muted">No email is sent — share this password with them yourself.</p>
           </div>
         </form>
       </div>
@@ -128,14 +129,6 @@ const selectClass = "mt-1.5 w-full rounded-lg border border-border bg-white px-3
 
       <div id="cards" class="mt-6 hidden grid gap-6 sm:grid-cols-2 xl:grid-cols-3"></div>
       <p id="empty" class="mt-10 hidden text-center text-sm text-text-muted">No employees match your search.</p>
-    </Section>
-  </div>
-
-  <div id="access-denied" class="hidden">
-    <Section background="white" maxWidth="narrow" class="text-center">
-      <h1 class="text-2xl">You don't have access to this page</h1>
-      <p class="mx-auto mt-3 max-w-md text-text">Ask an Admin to grant you access to Employees if you need it.</p>
-      <a href="/" class="mt-6 inline-flex items-center gap-1.5 text-sm font-semibold text-blue hover:text-blue-hover">← Back home</a>
     </Section>
   </div>
 </Layout>
@@ -196,7 +189,7 @@ const selectClass = "mt-1.5 w-full rounded-lg border border-border bg-white px-3
 <script>
   import { requireLogin } from "../lib/auth";
   import { loadMe, hasAccess, type PageKey } from "../lib/access";
-  import { listEmployees, deleteEmployee, createEmployeeWithLogin, resetPassword, ApiError } from "../lib/api";
+  import { listEmployees, deleteEmployee, createEmployeeWithLogin, updateEmployee, resetPassword, ApiError } from "../lib/api";
   import type { Employee } from "../data/employees";
 
   async function init() {
@@ -204,7 +197,7 @@ const selectClass = "mt-1.5 w-full rounded-lg border border-border bg-white px-3
 
     const me = await loadMe();
     if (!hasAccess(me, "employees")) {
-      document.getElementById("access-denied")!.classList.remove("hidden");
+      location.replace("/"); // only shows the pages this person actually has, no "denied" message
       return;
     }
     document.getElementById("app")!.classList.remove("hidden");
@@ -222,7 +215,14 @@ const selectClass = "mt-1.5 w-full rounded-lg border border-border bg-white px-3
     const photoInput = $("photo") as HTMLInputElement;
     const accountRoleSelect = $("accountRole") as HTMLSelectElement;
     const accessFields = $("access-fields");
+    const addOnlyFields = $("add-only-fields");
+    const formHeading = $("form-heading");
+    const formSubmit = $("form-submit") as HTMLButtonElement;
+    const formNote = $("form-note");
+    const emailInput = $("email") as HTMLInputElement;
+    const passwordInput = $("password") as HTMLInputElement;
     const formError = $("form-error");
+    let editingId: string | null = null;
     const showFormError = (message: string) => {
       formError.textContent = message;
       formError.classList.remove("hidden");
@@ -375,7 +375,12 @@ const selectClass = "mt-1.5 w-full rounded-lg border border-border bg-white px-3
       card.append(head, skills, details, work);
 
       if (isAdmin) {
-        const reset = el("button", "mt-3 w-full text-center text-xs font-medium text-blue hover:underline", "Reset password");
+        const actions = el("div", "mt-3 grid grid-cols-2 gap-2");
+        const edit = el("button", "w-full rounded-lg border border-border py-1.5 text-center text-xs font-medium text-navy hover:bg-bg-alt", "Edit");
+        edit.type = "button";
+        edit.addEventListener("click", () => enterEditMode(e));
+
+        const reset = el("button", "w-full rounded-lg border border-border py-1.5 text-center text-xs font-medium text-blue hover:bg-bg-alt", "Reset password");
         reset.type = "button";
         reset.addEventListener("click", async () => {
           const newPassword = prompt(`New password for ${e.name} (min 8 characters). Share it with them yourself.`);
@@ -387,7 +392,8 @@ const selectClass = "mt-1.5 w-full rounded-lg border border-border bg-white px-3
             showError(err instanceof ApiError ? err.message : "Could not reset that password.");
           }
         });
-        card.append(reset);
+        actions.append(edit, reset);
+        card.append(actions);
       }
 
       return card;
@@ -413,11 +419,62 @@ const selectClass = "mt-1.5 w-full rounded-lg border border-border bg-white px-3
       return; // No add-employee form for non-admins.
     }
 
+    function enterAddMode() {
+      editingId = null;
+      form.reset();
+      formHeading.textContent = "Add employee";
+      formSubmit.textContent = "Save employee";
+      formNote.textContent = "No email is sent — share this password with them yourself.";
+      addOnlyFields.classList.remove("hidden");
+      emailInput.required = true;
+      passwordInput.required = true;
+      accessFields.classList.toggle("hidden", accountRoleSelect.value === "Admin");
+      formError.classList.add("hidden");
+    }
+
+    function enterEditMode(e: Employee) {
+      editingId = e.id;
+      photoInput.value = ""; // don't carry over a file picked during a previous add/edit
+      formHeading.textContent = `Edit ${e.name}`;
+      formSubmit.textContent = "Save changes";
+      formNote.textContent = "Email and password aren't changed here — use Reset password for their login.";
+      formError.classList.add("hidden");
+
+      (form.elements.namedItem("name") as HTMLInputElement).value = e.name;
+      (form.elements.namedItem("role") as HTMLInputElement).value = e.role;
+      (form.elements.namedItem("type") as HTMLSelectElement).value = e.type;
+      (form.elements.namedItem("skills") as HTMLInputElement).value = e.skills.join(", ");
+      (form.elements.namedItem("workingMode") as HTMLSelectElement).value = e.workingMode;
+      (form.elements.namedItem("phone") as HTMLInputElement).value = e.phone;
+      (form.elements.namedItem("location") as HTMLInputElement).value = e.location;
+      (form.elements.namedItem("joined") as HTMLInputElement).value = e.joined;
+      (form.elements.namedItem("workDashboard") as HTMLInputElement).value = e.workDashboard;
+      accountRoleSelect.value = e.accountRole;
+      form.querySelectorAll<HTMLInputElement>("input[name=access]").forEach((box) => {
+        box.checked = e.access.includes(box.value as PageKey);
+      });
+      accessFields.classList.toggle("hidden", e.accountRole === "Admin");
+
+      // Email/password aren't editable here (email is the Cognito username;
+      // password changes go through Reset password instead).
+      addOnlyFields.classList.add("hidden");
+      emailInput.required = false;
+      passwordInput.required = false;
+
+      formWrap.classList.remove("hidden");
+      toggle.setAttribute("aria-expanded", "true");
+      toggle.textContent = "Close form";
+      formWrap.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+
     toggle.addEventListener("click", () => {
       const open = formWrap.classList.toggle("hidden") === false;
       toggle.setAttribute("aria-expanded", String(open));
       toggle.textContent = open ? "Close form" : "+ Add employee";
-      if (open) (form.elements.namedItem("name") as HTMLInputElement).focus();
+      if (open) {
+        enterAddMode();
+        (form.elements.namedItem("name") as HTMLInputElement).focus();
+      }
     });
     // Only reveal the button once its click handler is actually attached.
     toggle.classList.remove("hidden");
@@ -460,14 +517,12 @@ const selectClass = "mt-1.5 w-full rounded-lg border border-border bg-white px-3
       const submitButton = form.querySelector<HTMLButtonElement>("button[type=submit]")!;
       submitButton.disabled = true;
       try {
-        const created = await createEmployeeWithLogin({
+        const common = {
           name: v.name.trim(),
           role: v.role.trim(),
           type: v.type as Employee["type"],
           skills: (v.skills ?? "").split(",").map((s) => s.trim()).filter(Boolean),
           workingMode: v.workingMode as Employee["workingMode"],
-          email: v.email.trim(),
-          password: v.password,
           phone: (v.phone ?? "").trim(),
           location: (v.location ?? "").trim(),
           joined: v.joined,
@@ -475,10 +530,21 @@ const selectClass = "mt-1.5 w-full rounded-lg border border-border bg-white px-3
           accountRole,
           access,
           photoDataUrl: await readPhoto(photoInput.files?.[0]),
-        });
-        employees.push(created);
-        form.reset();
-        accessFields.classList.remove("hidden");
+        };
+
+        if (editingId) {
+          const updated = await updateEmployee(editingId, common);
+          const idx = employees.findIndex((x) => x.id === editingId);
+          if (idx !== -1) employees[idx] = { ...employees[idx], ...updated };
+        } else {
+          const created = await createEmployeeWithLogin({ ...common, email: v.email.trim(), password: v.password });
+          employees.push(created);
+        }
+
+        formWrap.classList.add("hidden");
+        toggle.setAttribute("aria-expanded", "false");
+        toggle.textContent = "+ Add employee";
+        enterAddMode();
         render();
       } catch (err) {
         showFormError(err instanceof ApiError ? err.message : "Could not save that employee.");

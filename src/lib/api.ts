@@ -52,6 +52,26 @@ export const deleteExpense = (id: string) => request<void>(`/expenses/${encodeUR
 export const listEmployees = () => request<Employee[]>("/employees");
 export const deleteEmployee = (id: string) => request<void>(`/employees/${encodeURIComponent(id)}`, { method: "DELETE" });
 
+export interface EmployeeEditPayload {
+  name: string;
+  role: string;
+  type: Employee["type"];
+  skills: string[];
+  workingMode: Employee["workingMode"];
+  phone: string;
+  location: string;
+  joined: string;
+  workDashboard: string;
+  accountRole: "Admin" | "Employee";
+  access: string[];
+  /** Optional — only sent (and only replaces the photo) when a new one was chosen. */
+  photoDataUrl?: string;
+}
+
+/** Admin-only: edits an existing team member's profile/role/access (not their password or email). */
+export const updateEmployee = (id: string, payload: EmployeeEditPayload) =>
+  request<Employee>(`/employees/${encodeURIComponent(id)}`, { method: "PATCH", body: JSON.stringify(payload) });
+
 export interface NewEmployeePayload {
   name: string;
   role: string;

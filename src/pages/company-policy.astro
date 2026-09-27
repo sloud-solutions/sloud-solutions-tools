@@ -60,13 +60,6 @@ import { COMPANY } from "../data/company";
     </Section>
   </div>
 
-  <div id="access-denied" class="hidden">
-    <Section background="white" maxWidth="narrow" class="text-center">
-      <h1 class="text-2xl">You don't have access to this page</h1>
-      <p class="mx-auto mt-3 max-w-md text-text">Ask an Admin to grant you access to Company Policy if you need it.</p>
-      <a href="/" class="mt-6 inline-flex items-center gap-1.5 text-sm font-semibold text-blue hover:text-blue-hover">← Back home</a>
-    </Section>
-  </div>
 </Layout>
 
 <script>
@@ -76,7 +69,11 @@ import { COMPANY } from "../data/company";
   async function init() {
     if (!requireLogin()) return;
     const me = await loadMe();
-    document.getElementById(hasAccess(me, "company-policy") ? "app" : "access-denied")!.classList.remove("hidden");
+    if (!hasAccess(me, "company-policy")) {
+      location.replace("/"); // only shows the pages this person actually has, no "denied" message
+      return;
+    }
+    document.getElementById("app")!.classList.remove("hidden");
   }
   init();
 </script>
