@@ -27,4 +27,6 @@ export interface Employee {
   /** Admin: full access to every page. Employee: limited to `access` below. */
   accountRole: "Admin" | "Employee";
   access: PageKey[];
+  /** Cognito login enabled/disabled. Missing on older rows means enabled. */
+  enabled?: boolean;
 }

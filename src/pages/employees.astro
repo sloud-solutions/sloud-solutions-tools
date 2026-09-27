@@ -223,7 +223,7 @@ const selectClass = "mt-1.5 w-full rounded-lg border border-border bg-white px-3
 <script>
   import { requireLogin } from "../lib/auth";
   import { loadMe, hasAccess, type PageKey } from "../lib/access";
-  import { listEmployees, deleteEmployee, createEmployeeWithLogin, updateEmployee, resetPassword, ApiError } from "../lib/api";
+  import { listEmployees, deleteEmployee, createEmployeeWithLogin, updateEmployee, resetPassword, setEmployeeEnabled, ApiError } from "../lib/api";
   import { watchCapsLock, openModal, closeModal } from "../lib/ui";
   import type { Employee } from "../data/employees";
 
@@ -327,7 +327,10 @@ const selectClass = "mt-1.5 w-full rounded-lg border border-border bg-white px-3
     }
 
     function buildCard(e: Employee, index: number) {
-      const card = el("article", "emp-card relative overflow-hidden rounded-xl border border-border bg-white p-6 shadow-sm");
+      const card = el(
+        "article",
+        `emp-card relative overflow-hidden rounded-xl border border-border bg-white p-6 shadow-sm ${e.enabled === false ? "opacity-60" : ""}`,
+      );
       card.style.animationDelay = `${Math.min(index, 8) * 70}ms`;
       card.append(el("span", "emp-accent absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-blue to-cyan"));
 
@@ -355,6 +358,7 @@ const selectClass = "mt-1.5 w-full rounded-lg border border-border bg-white px-3
         el("span", "rounded-full bg-bg-alt px-2.5 py-0.5 text-xs font-medium text-navy", e.workingMode),
       );
       if (e.accountRole === "Admin") badges.append(el("span", "rounded-full bg-navy/10 px-2.5 py-0.5 text-xs font-medium text-navy", "Admin"));
+      if (e.enabled === false) badges.append(el("span", "rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-medium text-red-800", "Disabled"));
       who.append(badges);
 
       head.append(avatar, who);
@@ -410,15 +414,35 @@ const selectClass = "mt-1.5 w-full rounded-lg border border-border bg-white px-3
       card.append(head, skills, details, work);
 
       if (isAdmin) {
-        const actions = el("div", "mt-3 grid grid-cols-2 gap-2");
+        const actions = el("div", "mt-3 grid grid-cols-3 gap-2");
         const edit = el("button", "w-full rounded-lg border border-border py-1.5 text-center text-xs font-medium text-navy hover:bg-bg-alt", "Edit");
         edit.type = "button";
         edit.addEventListener("click", () => enterEditMode(e));
 
+        const enabled = e.enabled !== false;
+        const toggle = el(
+          "button",
+          `w-full rounded-lg border py-1.5 text-center text-xs font-medium hover:bg-bg-alt ${enabled ? "border-border text-amber-700" : "border-emerald-200 text-emerald-700"}`,
+          enabled ? "Disable" : "Enable",
+        );
+        toggle.type = "button";
+        toggle.addEventListener("click", async () => {
+          const turningOff = enabled;
+          if (turningOff && !confirm(`Disable ${e.name}'s login? They won't be able to sign in until re-enabled.`)) return;
+          try {
+            const updated = await setEmployeeEnabled(e.id, !enabled);
+            const idx = employees.findIndex((x) => x.id === e.id);
+            if (idx !== -1) employees[idx] = { ...employees[idx], ...updated };
+            render(false);
+          } catch (err) {
+            showError(err instanceof ApiError ? err.message : "Could not change that account's status.");
+          }
+        });
+
         const reset = el("button", "w-full rounded-lg border border-border py-1.5 text-center text-xs font-medium text-blue hover:bg-bg-alt", "Reset password");
         reset.type = "button";
         reset.addEventListener("click", () => openResetModal(e));
-        actions.append(edit, reset);
+        actions.append(edit, toggle, reset);
         card.append(actions);
       }
 

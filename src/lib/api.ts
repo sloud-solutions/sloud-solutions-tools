@@ -98,3 +98,7 @@ export const createEmployeeWithLogin = (payload: NewEmployeePayload) =>
 /** Admin-only: resets someone's password directly (share the new one with them out-of-band). */
 export const resetPassword = (email: string, password: string) =>
   request<void>("/admin/reset-password", { method: "POST", body: JSON.stringify({ email, password }) });
+
+/** Admin-only: temporarily enable/disable someone's login without removing them. */
+export const setEmployeeEnabled = (id: string, enabled: boolean) =>
+  request<Employee>(`/employees/${encodeURIComponent(id)}`, { method: "PATCH", body: JSON.stringify({ enabled }) });
