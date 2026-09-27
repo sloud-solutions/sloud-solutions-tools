@@ -58,6 +58,10 @@ const nav = [
               </a>
             ))
           }
+          <div id="account-info" class="ml-1 hidden items-center gap-2 border-l border-border pl-3">
+            <span id="account-role-badge" class="rounded-full px-2 py-0.5 text-xs font-semibold"></span>
+            <span id="account-email" class="max-w-[14rem] truncate text-sm text-text-muted" title=""></span>
+          </div>
           <button
             id="logout-button"
             type="button"
@@ -80,6 +84,9 @@ const nav = [
 
       const button = document.getElementById("logout-button");
       const navLinks = document.querySelectorAll<HTMLAnchorElement>("nav [data-page]");
+      const accountInfo = document.getElementById("account-info") as HTMLElement;
+      const accountEmail = document.getElementById("account-email") as HTMLElement;
+      const accountRoleBadge = document.getElementById("account-role-badge") as HTMLElement;
 
       if (isLoggedIn()) {
         button?.classList.remove("hidden");
@@ -94,6 +101,15 @@ const nav = [
               const page = link.dataset.page as PageKey;
               link.classList.toggle("hidden", !hasAccess(me, page));
             });
+
+            if (me.email) accountEmail.textContent = me.email;
+            accountEmail.title = me.email ?? "";
+            accountRoleBadge.textContent = me.role;
+            accountRoleBadge.className =
+              "rounded-full px-2 py-0.5 text-xs font-semibold " +
+              (me.role === "Admin" ? "bg-navy/10 text-navy" : "bg-blue/10 text-blue");
+            accountInfo.classList.remove("hidden");
+            accountInfo.classList.add("flex");
           })
           .catch(() => {
             // /me failed (expired token, etc.) — leave nav as-is; the page's
