@@ -32,7 +32,10 @@ const selectClass = "mt-1.5 w-full rounded-lg border border-border bg-white px-3
         </div>
       </div>
 
-      <div class="mt-8 grid items-start gap-8 lg:grid-cols-[minmax(0,5fr)_minmax(0,2fr)]">
+      <p id="error-banner" class="mt-6 hidden rounded-lg bg-red-50 p-3 text-sm text-red-800" role="alert"></p>
+      <p id="loading-note" class="mt-6 text-sm text-text-muted">Loading…</p>
+
+      <div id="content" class="mt-8 hidden grid items-start gap-8 lg:grid-cols-[minmax(0,5fr)_minmax(0,2fr)]">
         <div class="rounded-xl border border-border bg-white shadow-sm">
           <div class="flex flex-wrap items-center justify-between gap-3 border-b border-border p-5">
             <h2 class="text-xl">Purchases <span id="count" class="text-sm font-normal text-text-muted"></span></h2>
@@ -95,36 +98,57 @@ const selectClass = "mt-1.5 w-full rounded-lg border border-border bg-white px-3
           <button type="submit" class="w-full rounded-lg bg-blue px-6 py-3 text-sm font-semibold text-white shadow-sm hover:bg-blue-hover">
             Add purchase
           </button>
-          <p class="text-xs text-text-muted">Demo mode: entries are kept in this browser only until real storage is connected.</p>
+          <p class="text-xs text-text-muted">Visible to everyone with access to the Expense Tracker.</p>
         </form>
       </div>
+    </Section>
+  </div>
+
+  <div id="access-denied" class="hidden">
+    <Section background="white" maxWidth="narrow" class="text-center">
+      <h1 class="text-2xl">You don't have access to this page</h1>
+      <p class="mx-auto mt-3 max-w-md text-text">Ask an Admin to grant you access to the Expense Tracker if you need it.</p>
+      <a href="/" class="mt-6 inline-flex items-center gap-1.5 text-sm font-semibold text-blue hover:text-blue-hover">← Back home</a>
     </Section>
   </div>
 </Layout>
 
 <script>
   import { requireLogin } from "../lib/auth";
-  import { EXPENSES, type Expense } from "../data/expenses";
+  import { loadMe, hasAccess } from "../lib/access";
+  import { listExpenses, createExpense, deleteExpense, ApiError } from "../lib/api";
+  import type { Expense } from "../data/expenses";
 
-  if (requireLogin()) {
+  async function init() {
+    if (!requireLogin()) return;
+
+    const me = await loadMe();
+    if (!hasAccess(me, "expenses")) {
+      document.getElementById("access-denied")!.classList.remove("hidden");
+      return;
+    }
     document.getElementById("app")!.classList.remove("hidden");
 
-    const STORE_KEY = "sloud:expenses";
-    const load = (): Expense[] => {
-      try {
-        const saved = localStorage.getItem(STORE_KEY);
-        if (saved) return JSON.parse(saved) as Expense[];
-      } catch {}
-      return [...EXPENSES];
-    };
-    const save = () => {
-      try {
-        localStorage.setItem(STORE_KEY, JSON.stringify(expenses));
-      } catch {}
+    const $ = (id: string) => document.getElementById(id)!;
+    const loadingNote = $("loading-note");
+    const errorBanner = $("error-banner");
+    const content = $("content");
+    const showError = (message: string) => {
+      errorBanner.textContent = message;
+      errorBanner.classList.remove("hidden");
     };
 
-    let expenses = load();
-    const $ = (id: string) => document.getElementById(id)!;
+    let expenses: Expense[] = [];
+    try {
+      expenses = await listExpenses();
+    } catch (err) {
+      loadingNote.classList.add("hidden");
+      showError(err instanceof ApiError ? err.message : "Could not load expenses. Please try again.");
+      return;
+    }
+    loadingNote.classList.add("hidden");
+    content.classList.remove("hidden");
+
     const rows = $("rows");
     const filterCategory = $("filter-category") as HTMLSelectElement;
     const filterStatus = $("filter-status") as HTMLSelectElement;
@@ -184,10 +208,15 @@ const selectClass = "mt-1.5 w-full rounded-lg border border-border bg-white px-3
           remove.type = "button";
           remove.className = "text-xs font-medium text-red-600 hover:underline";
           remove.textContent = "Delete";
-          remove.addEventListener("click", () => {
+          remove.addEventListener("click", async () => {
             if (!confirm(`Delete "${e.item}"?`)) return;
+            try {
+              await deleteExpense(e.id);
+            } catch (err) {
+              showError(err instanceof ApiError ? err.message : "Could not delete that expense.");
+              return;
+            }
             expenses = expenses.filter((x) => x.id !== e.id);
-            save();
             renderAll();
           });
           actions.append(remove);
@@ -205,27 +234,36 @@ const selectClass = "mt-1.5 w-full rounded-lg border border-border bg-white px-3
 
     filterCategory.addEventListener("change", render);
     filterStatus.addEventListener("change", render);
-    form.addEventListener("submit", (event) => {
+    form.addEventListener("submit", async (event) => {
       event.preventDefault();
       if (!form.reportValidity()) return;
       const v = Object.fromEntries(new FormData(form).entries()) as Record<string, string>;
-      expenses.push({
-        id: `x${Date.now()}`,
-        date: v.date,
-        item: v.item.trim(),
-        vendor: v.vendor.trim(),
-        category: v.category as Expense["category"],
-        amount: Number(v.amount),
-        paidBy: v.paidBy.trim(),
-        status: v.status as Expense["status"],
-        notes: (v.notes ?? "").trim(),
-      });
-      save();
-      form.reset();
-      (form.elements.namedItem("date") as HTMLInputElement).value = new Date().toISOString().slice(0, 10);
-      renderAll();
+      const submitButton = form.querySelector<HTMLButtonElement>("button[type=submit]")!;
+      submitButton.disabled = true;
+      try {
+        const created = await createExpense({
+          date: v.date,
+          item: v.item.trim(),
+          vendor: v.vendor.trim(),
+          category: v.category as Expense["category"],
+          amount: Number(v.amount),
+          paidBy: v.paidBy.trim(),
+          status: v.status as Expense["status"],
+          notes: (v.notes ?? "").trim(),
+        });
+        expenses.push(created);
+        form.reset();
+        (form.elements.namedItem("date") as HTMLInputElement).value = new Date().toISOString().slice(0, 10);
+        renderAll();
+      } catch (err) {
+        showError(err instanceof ApiError ? err.message : "Could not save that expense.");
+      } finally {
+        submitButton.disabled = false;
+      }
     });
 
     renderAll();
   }
+
+  init();
 </script>

@@ -3,6 +3,7 @@ import Layout from "../layouts/Layout.astro";
 import Section from "../components/Section.astro";
 import Field from "../components/Field.astro";
 import { EMPLOYEE_TYPES, WORKING_MODES } from "../data/employees";
+import { PAGE_KEYS, PAGE_LABELS } from "../lib/access";
 
 const selectClass = "mt-1.5 w-full rounded-lg border border-border bg-white px-3.5 py-2.5 text-sm text-text focus-visible:border-blue";
 ---
@@ -33,7 +34,7 @@ const selectClass = "mt-1.5 w-full rounded-lg border border-border bg-white px-3
           <button
             id="toggle-form"
             type="button"
-            class="rounded-lg bg-blue px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-hover"
+            class="hidden rounded-lg bg-blue px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-hover"
             aria-expanded="false"
             aria-controls="employee-form-wrap"
           >
@@ -42,6 +43,7 @@ const selectClass = "mt-1.5 w-full rounded-lg border border-border bg-white px-3
         </div>
       </div>
 
+      <!-- Admin-only: creates both the person's login and their directory row. -->
       <div id="employee-form-wrap" class="mt-6 hidden">
         <form id="employee-form" class="rounded-xl border border-border bg-white p-6 shadow-sm" novalidate>
           <h2 class="text-xl">Add employee</h2>
@@ -61,7 +63,7 @@ const selectClass = "mt-1.5 w-full rounded-lg border border-border bg-white px-3
                 {WORKING_MODES.map((m) => <option>{m}</option>)}
               </select>
             </div>
-            <Field id="email" label="Email" type="email" required />
+            <Field id="email" label="Email (their login username)" type="email" required />
             <Field id="phone" label="Phone" type="tel" />
             <Field id="location" label="Location" placeholder="City, Country" />
             <Field id="joined" label="Joining date" type="date" required />
@@ -76,17 +78,52 @@ const selectClass = "mt-1.5 w-full rounded-lg border border-border bg-white px-3
               />
             </div>
           </div>
+
+          <div class="mt-6 rounded-lg border border-border bg-bg-alt p-4">
+            <label for="accountRole" class="block text-sm font-medium text-navy">Account type <span class="text-red-600" aria-hidden="true">*</span></label>
+            <select id="accountRole" name="accountRole" required class={`${selectClass} sm:max-w-xs`}>
+              <option value="Employee">Employee — limited to the pages checked below</option>
+              <option value="Admin">Admin — full access, can add other users</option>
+            </select>
+
+            <div id="access-fields" class="mt-4">
+              <p class="text-sm font-medium text-navy">Page access</p>
+              <div class="mt-2 flex flex-wrap gap-x-6 gap-y-2">
+                {
+                  PAGE_KEYS.map((key) => (
+                    <label class="flex items-center gap-2 text-sm text-text">
+                      <input type="checkbox" name="access" value={key} class="h-4 w-4 rounded border-border text-blue focus-visible:ring-blue" />
+                      {PAGE_LABELS[key]}
+                    </label>
+                  ))
+                }
+              </div>
+            </div>
+          </div>
+
+          <p id="form-error" class="mt-4 hidden rounded-lg bg-red-50 p-3 text-sm text-red-800" role="alert"></p>
           <div class="mt-6 flex items-center gap-4">
             <button type="submit" class="rounded-lg bg-blue px-6 py-3 text-sm font-semibold text-white shadow-sm hover:bg-blue-hover">
               Save employee
             </button>
-            <p class="text-xs text-text-muted">Demo mode: entries are kept in this browser only until real storage is connected.</p>
+            <p class="text-xs text-text-muted">Cognito emails them a temporary password; they set their own on first login.</p>
           </div>
         </form>
       </div>
 
-      <div id="cards" class="mt-6 grid gap-6 sm:grid-cols-2 xl:grid-cols-3"></div>
+      <p id="error-banner" class="mt-6 hidden rounded-lg bg-red-50 p-3 text-sm text-red-800" role="alert"></p>
+      <p id="loading-note" class="mt-6 text-sm text-text-muted">Loading…</p>
+
+      <div id="cards" class="mt-6 hidden grid gap-6 sm:grid-cols-2 xl:grid-cols-3"></div>
       <p id="empty" class="mt-10 hidden text-center text-sm text-text-muted">No employees match your search.</p>
+    </Section>
+  </div>
+
+  <div id="access-denied" class="hidden">
+    <Section background="white" maxWidth="narrow" class="text-center">
+      <h1 class="text-2xl">You don't have access to this page</h1>
+      <p class="mx-auto mt-3 max-w-md text-text">Ask an Admin to grant you access to Employees if you need it.</p>
+      <a href="/" class="mt-6 inline-flex items-center gap-1.5 text-sm font-semibold text-blue hover:text-blue-hover">← Back home</a>
     </Section>
   </div>
 </Layout>
@@ -146,27 +183,24 @@ const selectClass = "mt-1.5 w-full rounded-lg border border-border bg-white px-3
 
 <script>
   import { requireLogin } from "../lib/auth";
-  import { EMPLOYEES, type Employee } from "../data/employees";
+  import { loadMe, hasAccess, type PageKey } from "../lib/access";
+  import { listEmployees, deleteEmployee, createEmployeeWithLogin, ApiError } from "../lib/api";
+  import type { Employee } from "../data/employees";
 
-  if (requireLogin()) {
+  async function init() {
+    if (!requireLogin()) return;
+
+    const me = await loadMe();
+    if (!hasAccess(me, "employees")) {
+      document.getElementById("access-denied")!.classList.remove("hidden");
+      return;
+    }
     document.getElementById("app")!.classList.remove("hidden");
+    const isAdmin = me.role === "Admin";
 
-    const STORE_KEY = "sloud:employees:v2";
-    const load = (): Employee[] => {
-      try {
-        const saved = localStorage.getItem(STORE_KEY);
-        if (saved) return JSON.parse(saved) as Employee[];
-      } catch {}
-      return structuredClone(EMPLOYEES);
-    };
-    const save = () => {
-      try {
-        localStorage.setItem(STORE_KEY, JSON.stringify(employees));
-      } catch {}
-    };
-
-    let employees = load();
     const $ = (id: string) => document.getElementById(id)!;
+    const loadingNote = $("loading-note");
+    const errorBanner = $("error-banner");
     const cards = $("cards");
     const search = $("search") as HTMLInputElement;
     const filter = $("filter-type") as HTMLSelectElement;
@@ -174,6 +208,30 @@ const selectClass = "mt-1.5 w-full rounded-lg border border-border bg-white px-3
     const formWrap = $("employee-form-wrap");
     const toggle = $("toggle-form");
     const photoInput = $("photo") as HTMLInputElement;
+    const accountRoleSelect = $("accountRole") as HTMLSelectElement;
+    const accessFields = $("access-fields");
+    const formError = $("form-error");
+    const showFormError = (message: string) => {
+      formError.textContent = message;
+      formError.classList.remove("hidden");
+    };
+    const showError = (message: string) => {
+      errorBanner.textContent = message;
+      errorBanner.classList.remove("hidden");
+    };
+
+    if (isAdmin) toggle.classList.remove("hidden");
+
+    let employees: Employee[] = [];
+    try {
+      employees = await listEmployees();
+    } catch (err) {
+      loadingNote.classList.add("hidden");
+      showError(err instanceof ApiError ? err.message : "Could not load the team directory.");
+      return;
+    }
+    loadingNote.classList.add("hidden");
+    cards.classList.remove("hidden");
 
     const typeBadge: Record<string, string> = {
       "Full-time": "bg-blue/10 text-blue",
@@ -251,19 +309,28 @@ const selectClass = "mt-1.5 w-full rounded-lg border border-border bg-white px-3
         el("span", `rounded-full px-2.5 py-0.5 text-xs font-medium ${typeBadge[e.type] ?? ""}`, e.type),
         el("span", "rounded-full bg-bg-alt px-2.5 py-0.5 text-xs font-medium text-navy", e.workingMode),
       );
+      if (e.accountRole === "Admin") badges.append(el("span", "rounded-full bg-navy/10 px-2.5 py-0.5 text-xs font-medium text-navy", "Admin"));
       who.append(badges);
 
-      const remove = el("button", "rounded-md p-1 text-text-muted hover:bg-red-50 hover:text-red-600", "✕");
-      remove.type = "button";
-      remove.title = `Remove ${e.name}`;
-      remove.setAttribute("aria-label", `Remove ${e.name}`);
-      remove.addEventListener("click", () => {
-        if (!confirm(`Remove ${e.name}?`)) return;
-        employees = employees.filter((x) => x.id !== e.id);
-        save();
-        render(false);
-      });
-      head.append(avatar, who, remove);
+      head.append(avatar, who);
+      if (isAdmin) {
+        const remove = el("button", "rounded-md p-1 text-text-muted hover:bg-red-50 hover:text-red-600", "✕");
+        remove.type = "button";
+        remove.title = `Remove ${e.name}`;
+        remove.setAttribute("aria-label", `Remove ${e.name}`);
+        remove.addEventListener("click", async () => {
+          if (!confirm(`Remove ${e.name}? This also disables their login.`)) return;
+          try {
+            await deleteEmployee(e.id);
+          } catch (err) {
+            showError(err instanceof ApiError ? err.message : "Could not remove that employee.");
+            return;
+          }
+          employees = employees.filter((x) => x.id !== e.id);
+          render(false);
+        });
+        head.append(remove);
+      }
 
       // Skills
       const skills = el("div", "mt-4 flex flex-wrap gap-1.5");
@@ -313,6 +380,12 @@ const selectClass = "mt-1.5 w-full rounded-lg border border-border bg-white px-3
 
     search.addEventListener("input", () => render(false));
     filter.addEventListener("change", () => render());
+
+    if (!isAdmin) {
+      render();
+      return; // No add-employee form for non-admins.
+    }
+
     toggle.addEventListener("click", () => {
       const open = formWrap.classList.toggle("hidden") === false;
       toggle.setAttribute("aria-expanded", String(open));
@@ -320,7 +393,11 @@ const selectClass = "mt-1.5 w-full rounded-lg border border-border bg-white px-3
       if (open) (form.elements.namedItem("name") as HTMLInputElement).focus();
     });
 
-    // Downscale the chosen picture so it stays small in storage.
+    accountRoleSelect.addEventListener("change", () => {
+      accessFields.classList.toggle("hidden", accountRoleSelect.value === "Admin");
+    });
+
+    // Downscale the chosen picture so it stays small enough to send inline.
     function readPhoto(file: File | undefined): Promise<string> {
       if (!file) return Promise.resolve("");
       return new Promise((resolve) => {
@@ -346,26 +423,42 @@ const selectClass = "mt-1.5 w-full rounded-lg border border-border bg-white px-3
     form.addEventListener("submit", async (event) => {
       event.preventDefault();
       if (!form.reportValidity()) return;
+      formError.classList.add("hidden");
       const v = Object.fromEntries([...new FormData(form).entries()].filter(([, val]) => typeof val === "string")) as Record<string, string>;
-      employees.push({
-        id: `e${Date.now()}`,
-        name: v.name.trim(),
-        role: v.role.trim(),
-        type: v.type as Employee["type"],
-        skills: (v.skills ?? "").split(",").map((s) => s.trim()).filter(Boolean),
-        workingMode: v.workingMode as Employee["workingMode"],
-        email: v.email.trim(),
-        phone: (v.phone ?? "").trim(),
-        location: (v.location ?? "").trim(),
-        joined: v.joined,
-        photo: await readPhoto(photoInput.files?.[0]),
-        workDashboard: (v.workDashboard ?? "").trim(),
-      });
-      save();
-      form.reset();
-      render();
+      const accountRole = v.accountRole as "Admin" | "Employee";
+      const access = accountRole === "Admin" ? [] : [...new FormData(form).getAll("access")].map(String) as PageKey[];
+
+      const submitButton = form.querySelector<HTMLButtonElement>("button[type=submit]")!;
+      submitButton.disabled = true;
+      try {
+        const created = await createEmployeeWithLogin({
+          name: v.name.trim(),
+          role: v.role.trim(),
+          type: v.type as Employee["type"],
+          skills: (v.skills ?? "").split(",").map((s) => s.trim()).filter(Boolean),
+          workingMode: v.workingMode as Employee["workingMode"],
+          email: v.email.trim(),
+          phone: (v.phone ?? "").trim(),
+          location: (v.location ?? "").trim(),
+          joined: v.joined,
+          workDashboard: (v.workDashboard ?? "").trim(),
+          accountRole,
+          access,
+          photoDataUrl: await readPhoto(photoInput.files?.[0]),
+        });
+        employees.push(created);
+        form.reset();
+        accessFields.classList.remove("hidden");
+        render();
+      } catch (err) {
+        showFormError(err instanceof ApiError ? err.message : "Could not save that employee.");
+      } finally {
+        submitButton.disabled = false;
+      }
     });
 
     render();
   }
+
+  init();
 </script>

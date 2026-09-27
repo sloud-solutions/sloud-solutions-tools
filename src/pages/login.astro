@@ -8,9 +8,10 @@ import Field from "../components/Field.astro";
   <Section background="alt" maxWidth="narrow">
     <div class="mx-auto max-w-md rounded-xl border border-border bg-white p-6 shadow-sm sm:p-8">
       <h1 class="text-2xl">Log in</h1>
-      <p class="mt-2 text-sm text-text-muted">Sign in to open the Expense Tracker and Employee details.</p>
+      <p id="login-subtitle" class="mt-2 text-sm text-text-muted">Sign in with your email and password.</p>
+
       <form id="login-form" class="mt-6 space-y-5" novalidate>
-        <Field id="username" label="Username" required />
+        <Field id="username" label="Email" type="email" required autocomplete="username" />
         <div>
           <label for="password" class="block text-sm font-medium text-navy">Password <span class="text-red-600" aria-hidden="true">*</span></label>
           <input
@@ -22,20 +23,39 @@ import Field from "../components/Field.astro";
             class="mt-1.5 w-full rounded-lg border border-border bg-white px-3.5 py-2.5 text-sm text-text focus-visible:border-blue"
           />
         </div>
-        <p id="login-error" class="hidden rounded-lg bg-red-50 p-3 text-sm text-red-800" role="alert">Incorrect username or password.</p>
+        <p id="login-error" class="hidden rounded-lg bg-red-50 p-3 text-sm text-red-800" role="alert"></p>
         <button type="submit" class="w-full rounded-lg bg-blue px-6 py-3 text-sm font-semibold text-white shadow-sm hover:bg-blue-hover">
           Log in
         </button>
       </form>
-      <p class="mt-5 rounded-lg bg-amber-50 p-3 text-xs text-amber-900">
-        Demo login only (username <strong>admin</strong>, password <strong>sloud@123</strong>). Real authentication will replace this when the backend is added.
-      </p>
+
+      <!-- Shown instead of the form above when Cognito requires a new password
+           (an Admin-created account's first login). -->
+      <form id="new-password-form" class="mt-6 hidden space-y-5" novalidate>
+        <p class="text-sm text-text">This is your first login — set a permanent password to continue.</p>
+        <div>
+          <label for="new-password" class="block text-sm font-medium text-navy">New password <span class="text-red-600" aria-hidden="true">*</span></label>
+          <input
+            id="new-password"
+            name="newPassword"
+            type="password"
+            required
+            minlength="8"
+            autocomplete="new-password"
+            class="mt-1.5 w-full rounded-lg border border-border bg-white px-3.5 py-2.5 text-sm text-text focus-visible:border-blue"
+          />
+        </div>
+        <p id="new-password-error" class="hidden rounded-lg bg-red-50 p-3 text-sm text-red-800" role="alert"></p>
+        <button type="submit" class="w-full rounded-lg bg-blue px-6 py-3 text-sm font-semibold text-white shadow-sm hover:bg-blue-hover">
+          Set password and continue
+        </button>
+      </form>
     </div>
   </Section>
 </Layout>
 
 <script>
-  import { login, isLoggedIn } from "../lib/auth";
+  import { login, completeNewPassword, isLoggedIn } from "../lib/auth";
 
   const params = new URLSearchParams(location.search);
   const next = params.get("next");
@@ -43,16 +63,41 @@ import Field from "../components/Field.astro";
   const target = next && next.startsWith("/") && !next.startsWith("//") ? next : "/expenses";
   if (isLoggedIn()) location.replace(target);
 
-  const form = document.getElementById("login-form") as HTMLFormElement;
-  const error = document.getElementById("login-error") as HTMLElement;
-  form.addEventListener("submit", (event) => {
+  const subtitle = document.getElementById("login-subtitle") as HTMLElement;
+  const loginForm = document.getElementById("login-form") as HTMLFormElement;
+  const loginError = document.getElementById("login-error") as HTMLElement;
+  const newPasswordForm = document.getElementById("new-password-form") as HTMLFormElement;
+  const newPasswordError = document.getElementById("new-password-error") as HTMLElement;
+
+  loginForm.addEventListener("submit", async (event) => {
     event.preventDefault();
-    if (!form.reportValidity()) return;
-    const data = new FormData(form);
-    if (login(String(data.get("username")).trim(), String(data.get("password")))) {
+    if (!loginForm.reportValidity()) return;
+    const data = new FormData(loginForm);
+    const result = await login(String(data.get("username")).trim(), String(data.get("password")));
+    if (result.ok) {
       location.href = target;
-    } else {
-      error.classList.remove("hidden");
+      return;
     }
+    if (result.challenge === "NEW_PASSWORD_REQUIRED") {
+      loginForm.classList.add("hidden");
+      subtitle.classList.add("hidden");
+      newPasswordForm.classList.remove("hidden");
+      return;
+    }
+    loginError.textContent = result.message ?? "Incorrect email or password.";
+    loginError.classList.remove("hidden");
+  });
+
+  newPasswordForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if (!newPasswordForm.reportValidity()) return;
+    const data = new FormData(newPasswordForm);
+    const result = await completeNewPassword(String(data.get("newPassword")));
+    if (result.ok) {
+      location.href = target;
+      return;
+    }
+    newPasswordError.textContent = result.message ?? "Could not set the new password.";
+    newPasswordError.classList.remove("hidden");
   });
 </script>

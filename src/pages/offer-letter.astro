@@ -15,6 +15,7 @@ const legendClass = "text-base font-semibold text-heading";
 ---
 
 <Layout title="Offer Letter Generator | Sloud Solutions Portal">
+  <div id="app" class="hidden">
   <Section background="white" maxWidth="narrow" class="text-center">
     <p class="text-sm font-semibold uppercase tracking-wider text-blue">Offer Letter</p>
     <h1 class="mt-4 text-4xl font-bold leading-tight sm:text-5xl">Offer Letter Generator</h1>
@@ -153,6 +154,15 @@ const legendClass = "text-base font-semibold text-heading";
       </div>
     </div>
   </Section>
+  </div>
+
+  <div id="access-denied" class="hidden">
+    <Section background="white" maxWidth="narrow" class="text-center">
+      <h1 class="text-2xl">You don't have access to this page</h1>
+      <p class="mx-auto mt-3 max-w-md text-text">Ask an Admin to grant you access to the Offer Letter generator if you need it.</p>
+      <a href="/" class="mt-6 inline-flex items-center gap-1.5 text-sm font-semibold text-blue hover:text-blue-hover">← Back home</a>
+    </Section>
+  </div>
 </Layout>
 
 <style is:global>
@@ -168,6 +178,17 @@ const legendClass = "text-base font-semibold text-heading";
 <script>
   import { renderAsync } from "docx-preview";
   import { generateLetter, hasTemplateRules } from "../lib/offer-letter";
+  import { requireLogin } from "../lib/auth";
+  import { loadMe, hasAccess } from "../lib/access";
+
+  async function init() {
+    if (!requireLogin()) return;
+    const me = await loadMe();
+    if (!hasAccess(me, "offer-letter")) {
+      document.getElementById("access-denied")!.classList.remove("hidden");
+      return;
+    }
+    document.getElementById("app")!.classList.remove("hidden");
 
   const form = document.getElementById("offer-form") as HTMLFormElement;
   const typeSelect = document.getElementById("employmentType") as HTMLSelectElement;
@@ -365,4 +386,7 @@ const legendClass = "text-base font-semibold text-heading";
       warning.textContent = error instanceof Error ? error.message : "Could not generate the letter.";
     }
   });
+  }
+
+  init();
 </script>

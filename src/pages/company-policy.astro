@@ -7,54 +7,76 @@ import { COMPANY } from "../data/company";
 ---
 
 <Layout title="Company Policy | Sloud Solutions Portal">
-  <Section background="white" maxWidth="narrow" class="text-center">
-    <p class="text-sm font-semibold uppercase tracking-wider text-blue">Company Policy</p>
-    <h1 class="mt-4 text-4xl font-bold leading-tight sm:text-5xl">Policies & Contact</h1>
-    <p class="mx-auto mt-6 max-w-2xl text-lg leading-relaxed">
-      Placeholder content: replace with the real policy text.
-    </p>
-  </Section>
+  <div id="app" class="hidden">
+    <Section background="white" maxWidth="narrow" class="text-center">
+      <p class="text-sm font-semibold uppercase tracking-wider text-blue">Company Policy</p>
+      <h1 class="mt-4 text-4xl font-bold leading-tight sm:text-5xl">Policies & Contact</h1>
+      <p class="mx-auto mt-6 max-w-2xl text-lg leading-relaxed">
+        Placeholder content: replace with the real policy text.
+      </p>
+    </Section>
 
-  <Section background="alt">
-    <div class="grid gap-8 lg:grid-cols-[1fr_340px]">
-      <div class="space-y-5">
-        {
-          POLICY_SECTIONS.map((section) => (
-            <article id={section.id} class="rounded-xl border border-border bg-white p-6 shadow-sm">
-              <h2 class="text-xl">{section.title}</h2>
-              <div class="mt-3 space-y-3 text-sm leading-relaxed">
-                {section.body.map((p) => <p>{p}</p>)}
-              </div>
-            </article>
-          ))
-        }
+    <Section background="alt">
+      <div class="grid gap-8 lg:grid-cols-[1fr_340px]">
+        <div class="space-y-5">
+          {
+            POLICY_SECTIONS.map((section) => (
+              <article id={section.id} class="rounded-xl border border-border bg-white p-6 shadow-sm">
+                <h2 class="text-xl">{section.title}</h2>
+                <div class="mt-3 space-y-3 text-sm leading-relaxed">
+                  {section.body.map((p) => <p>{p}</p>)}
+                </div>
+              </article>
+            ))
+          }
+        </div>
+
+        <aside class="h-fit rounded-xl border border-border bg-white p-6 shadow-sm lg:sticky lg:top-24">
+          <h2 class="text-xl">Contact Details</h2>
+          <ul class="mt-5 space-y-4 text-sm">
+            <li class="flex items-start gap-3">
+              <Icon name="mail" class="mt-0.5 h-5 w-5 shrink-0 text-blue" />
+              <a href={`mailto:${COMPANY.email}`} class="font-medium text-navy hover:text-blue">{COMPANY.email}</a>
+            </li>
+            <li class="flex items-start gap-3">
+              <Icon name="users" class="mt-0.5 h-5 w-5 shrink-0 text-blue" />
+              <span>{COMPANY.hrContact}</span>
+            </li>
+            <li class="flex items-start gap-3">
+              <Icon name="phone" class="mt-0.5 h-5 w-5 shrink-0 text-blue" />
+              <span>{COMPANY.phone}</span>
+            </li>
+            <li class="flex items-start gap-3">
+              <Icon name="map-pin" class="mt-0.5 h-5 w-5 shrink-0 text-blue" />
+              <span>{COMPANY.address}</span>
+            </li>
+            <li class="flex items-start gap-3">
+              <Icon name="arrow-right" class="mt-0.5 h-5 w-5 shrink-0 text-blue" />
+              <a href={COMPANY.linkedin} class="font-medium text-navy hover:text-blue" rel="noopener" target="_blank">LinkedIn</a>
+            </li>
+          </ul>
+        </aside>
       </div>
+    </Section>
+  </div>
 
-      <aside class="h-fit rounded-xl border border-border bg-white p-6 shadow-sm lg:sticky lg:top-24">
-        <h2 class="text-xl">Contact Details</h2>
-        <ul class="mt-5 space-y-4 text-sm">
-          <li class="flex items-start gap-3">
-            <Icon name="mail" class="mt-0.5 h-5 w-5 shrink-0 text-blue" />
-            <a href={`mailto:${COMPANY.email}`} class="font-medium text-navy hover:text-blue">{COMPANY.email}</a>
-          </li>
-          <li class="flex items-start gap-3">
-            <Icon name="users" class="mt-0.5 h-5 w-5 shrink-0 text-blue" />
-            <span>{COMPANY.hrContact}</span>
-          </li>
-          <li class="flex items-start gap-3">
-            <Icon name="phone" class="mt-0.5 h-5 w-5 shrink-0 text-blue" />
-            <span>{COMPANY.phone}</span>
-          </li>
-          <li class="flex items-start gap-3">
-            <Icon name="map-pin" class="mt-0.5 h-5 w-5 shrink-0 text-blue" />
-            <span>{COMPANY.address}</span>
-          </li>
-          <li class="flex items-start gap-3">
-            <Icon name="arrow-right" class="mt-0.5 h-5 w-5 shrink-0 text-blue" />
-            <a href={COMPANY.linkedin} class="font-medium text-navy hover:text-blue" rel="noopener" target="_blank">LinkedIn</a>
-          </li>
-        </ul>
-      </aside>
-    </div>
-  </Section>
+  <div id="access-denied" class="hidden">
+    <Section background="white" maxWidth="narrow" class="text-center">
+      <h1 class="text-2xl">You don't have access to this page</h1>
+      <p class="mx-auto mt-3 max-w-md text-text">Ask an Admin to grant you access to Company Policy if you need it.</p>
+      <a href="/" class="mt-6 inline-flex items-center gap-1.5 text-sm font-semibold text-blue hover:text-blue-hover">← Back home</a>
+    </Section>
+  </div>
 </Layout>
+
+<script>
+  import { requireLogin } from "../lib/auth";
+  import { loadMe, hasAccess } from "../lib/access";
+
+  async function init() {
+    if (!requireLogin()) return;
+    const me = await loadMe();
+    document.getElementById(hasAccess(me, "company-policy") ? "app" : "access-denied")!.classList.remove("hidden");
+  }
+  init();
+</script>

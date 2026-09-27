@@ -12,41 +12,63 @@ const statusClass: Record<string, string> = {
 ---
 
 <Layout title="Clients | Sloud Solutions Portal">
-  <Section background="white" maxWidth="narrow" class="text-center">
-    <p class="text-sm font-semibold uppercase tracking-wider text-blue">Clients</p>
-    <h1 class="mt-4 text-4xl font-bold leading-tight sm:text-5xl">Our Clients</h1>
-    <p class="mx-auto mt-6 max-w-2xl text-lg leading-relaxed">
-      {CLIENTS.length} clients. Placeholder content: replace with the real list.
-    </p>
-  </Section>
+  <div id="app" class="hidden">
+    <Section background="white" maxWidth="narrow" class="text-center">
+      <p class="text-sm font-semibold uppercase tracking-wider text-blue">Clients</p>
+      <h1 class="mt-4 text-4xl font-bold leading-tight sm:text-5xl">Our Clients</h1>
+      <p class="mx-auto mt-6 max-w-2xl text-lg leading-relaxed">
+        {CLIENTS.length} clients. Placeholder content: replace with the real list.
+      </p>
+    </Section>
 
-  <Section background="alt">
-    <div class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-      {
-        CLIENTS.map((client) => (
-          <article class="flex flex-col rounded-xl border border-border bg-white p-6 shadow-sm">
-            <div class="flex items-start justify-between gap-3">
-              <span class="text-xs font-semibold uppercase tracking-wider text-text-muted">{client.industry}</span>
-              <span class:list={["rounded-full px-2.5 py-1 text-xs font-semibold", statusClass[client.status]]}>
-                {client.status}
-              </span>
-            </div>
-            <h2 class="mt-3 text-lg">{client.name}</h2>
-            <p class="mt-2 text-sm leading-relaxed">{client.summary}</p>
-            <p class="mt-4 text-xs font-semibold uppercase tracking-wider text-text-muted">Work we do</p>
-            <ul class="mt-2 space-y-1.5 text-sm">
-              {
-                client.work.map((item) => (
-                  <li class="flex items-start gap-2">
-                    <Icon name="check" class="mt-0.5 h-4 w-4 shrink-0 text-blue" />
-                    <span>{item}</span>
-                  </li>
-                ))
-              }
-            </ul>
-          </article>
-        ))
-      }
-    </div>
-  </Section>
+    <Section background="alt">
+      <div class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        {
+          CLIENTS.map((client) => (
+            <article class="flex flex-col rounded-xl border border-border bg-white p-6 shadow-sm">
+              <div class="flex items-start justify-between gap-3">
+                <span class="text-xs font-semibold uppercase tracking-wider text-text-muted">{client.industry}</span>
+                <span class:list={["rounded-full px-2.5 py-1 text-xs font-semibold", statusClass[client.status]]}>
+                  {client.status}
+                </span>
+              </div>
+              <h2 class="mt-3 text-lg">{client.name}</h2>
+              <p class="mt-2 text-sm leading-relaxed">{client.summary}</p>
+              <p class="mt-4 text-xs font-semibold uppercase tracking-wider text-text-muted">Work we do</p>
+              <ul class="mt-2 space-y-1.5 text-sm">
+                {
+                  client.work.map((item) => (
+                    <li class="flex items-start gap-2">
+                      <Icon name="check" class="mt-0.5 h-4 w-4 shrink-0 text-blue" />
+                      <span>{item}</span>
+                    </li>
+                  ))
+                }
+              </ul>
+            </article>
+          ))
+        }
+      </div>
+    </Section>
+  </div>
+
+  <div id="access-denied" class="hidden">
+    <Section background="white" maxWidth="narrow" class="text-center">
+      <h1 class="text-2xl">You don't have access to this page</h1>
+      <p class="mx-auto mt-3 max-w-md text-text">Ask an Admin to grant you access to Clients if you need it.</p>
+      <a href="/" class="mt-6 inline-flex items-center gap-1.5 text-sm font-semibold text-blue hover:text-blue-hover">← Back home</a>
+    </Section>
+  </div>
 </Layout>
+
+<script>
+  import { requireLogin } from "../lib/auth";
+  import { loadMe, hasAccess } from "../lib/access";
+
+  async function init() {
+    if (!requireLogin()) return;
+    const me = await loadMe();
+    document.getElementById(hasAccess(me, "clients") ? "app" : "access-denied")!.classList.remove("hidden");
+  }
+  init();
+</script>

@@ -4,36 +4,41 @@ import Section from "../components/Section.astro";
 import Icon from "../components/Icon.astro";
 import type { IconName } from "../components/Icon.astro";
 
-const cards: { href: string; title: string; description: string; icon: IconName }[] = [
+const cards: { href: string; title: string; description: string; icon: IconName; page: string }[] = [
   {
     href: "/offer-letter",
     title: "Offer Letter",
     description: "Generate offer letters for new hires and interns.",
     icon: "file-text",
+    page: "offer-letter",
   },
   {
     href: "/company-policy",
     title: "Company Policy",
     description: "Read company policies and find contact details.",
     icon: "shield-check",
+    page: "company-policy",
   },
   {
     href: "/clients",
     title: "Clients",
     description: "See our clients and the work we do for them.",
     icon: "users",
+    page: "clients",
   },
   {
     href: "/expenses",
     title: "Expense Tracker",
     description: "Record and review company purchases (login required).",
     icon: "receipt",
+    page: "expenses",
   },
   {
     href: "/employees",
     title: "Employees",
     description: "Employee details, roles and types (login required).",
     icon: "id-card",
+    page: "employees",
   },
 ];
 ---
@@ -51,6 +56,7 @@ const cards: { href: string; title: string; description: string; icon: IconName 
         cards.map((card) => (
           <a
             href={card.href}
+            data-page={card.page}
             class="group flex flex-col rounded-xl border border-border bg-white p-8 shadow-sm hover:-translate-y-1 hover:shadow-lg"
           >
             <span class="flex h-12 w-12 items-center justify-center rounded-xl bg-blue/10 text-blue">
@@ -68,3 +74,20 @@ const cards: { href: string; title: string; description: string; icon: IconName 
     </div>
   </Section>
 </Layout>
+
+<script>
+  import { isLoggedIn } from "../lib/auth";
+  import { loadMe, hasAccess, type PageKey } from "../lib/access";
+
+  // Anonymous visitors see every card (clicking one just leads to /login);
+  // once logged in, cards the user can't open are hidden, same as the nav.
+  if (isLoggedIn()) {
+    loadMe()
+      .then((me) => {
+        document.querySelectorAll<HTMLAnchorElement>("[data-page]").forEach((card) => {
+          card.classList.toggle("hidden", !hasAccess(me, card.dataset.page as PageKey));
+        });
+      })
+      .catch(() => {});
+  }
+</script>

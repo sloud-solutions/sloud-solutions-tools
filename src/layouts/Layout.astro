@@ -8,12 +8,15 @@ interface Props {
 const { title = "Sloud Solutions | Internal Portal" } = Astro.props;
 const path = Astro.url.pathname.replace(/\/$/, "") || "/";
 
+// data-page drives client-side filtering by the logged-in user's access list
+// (see the script below) — every visitor's browser renders the same markup;
+// what differs is which links get hidden after login.
 const nav = [
-  { href: "/offer-letter", label: "Offer Letter" },
-  { href: "/company-policy", label: "Company Policy" },
-  { href: "/clients", label: "Clients" },
-  { href: "/expenses", label: "Expense Tracker" },
-  { href: "/employees", label: "Employees" },
+  { href: "/offer-letter", label: "Offer Letter", page: "offer-letter" },
+  { href: "/company-policy", label: "Company Policy", page: "company-policy" },
+  { href: "/clients", label: "Clients", page: "clients" },
+  { href: "/expenses", label: "Expense Tracker", page: "expenses" },
+  { href: "/employees", label: "Employees", page: "employees" },
 ];
 ---
 
@@ -44,6 +47,7 @@ const nav = [
             nav.map((item) => (
               <a
                 href={item.href}
+                data-page={item.page}
                 aria-current={path === item.href ? "page" : undefined}
                 class:list={[
                   "rounded-lg px-3 py-2 text-sm font-medium hover:bg-bg-alt hover:text-blue",
@@ -72,13 +76,31 @@ const nav = [
     </footer>
     <script>
       import { isLoggedIn, logout } from "../lib/auth";
+      import { loadMe, hasAccess, type PageKey } from "../lib/access";
+
       const button = document.getElementById("logout-button");
-      if (button && isLoggedIn()) {
-        button.classList.remove("hidden");
-        button.addEventListener("click", () => {
+      const navLinks = document.querySelectorAll<HTMLAnchorElement>("nav [data-page]");
+
+      if (isLoggedIn()) {
+        button?.classList.remove("hidden");
+        button?.addEventListener("click", () => {
           logout();
           location.href = "/login";
         });
+
+        loadMe()
+          .then((me) => {
+            navLinks.forEach((link) => {
+              const page = link.dataset.page as PageKey;
+              link.classList.toggle("hidden", !hasAccess(me, page));
+            });
+          })
+          .catch(() => {
+            // /me failed (expired token, etc.) — leave nav as-is; the page's
+            // own requireLogin()/requireAccess() guard will handle it.
+          });
+      } else {
+        navLinks.forEach((link) => link.classList.add("hidden"));
       }
     </script>
   </body>

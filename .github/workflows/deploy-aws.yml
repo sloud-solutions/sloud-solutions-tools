@@ -1,0 +1,51 @@
+name: deploy-aws
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  id-token: write # OIDC token for AWS; no static credentials
+  contents: read
+
+concurrency:
+  group: deploy-aws
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      # Baked into the static JS at build time (Astro/Vite's PUBLIC_ prefix) —
+      # set as repo/environment variables from `terraform output` in
+      # sloud-solutions-infra's stacks/tools, after its first apply.
+      PUBLIC_API_BASE_URL: ${{ vars.PUBLIC_API_BASE_URL }}
+      PUBLIC_COGNITO_USER_POOL_ID: ${{ vars.PUBLIC_COGNITO_USER_POOL_ID }}
+      PUBLIC_COGNITO_CLIENT_ID: ${{ vars.PUBLIC_COGNITO_CLIENT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - run: npm run build
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_TOOLS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Upload site
+        run: |
+          aws s3 sync dist/ "s3://${{ vars.S3_BUCKET }}" --delete \
+            --exclude "_astro/*" --cache-control "public,max-age=300"
+          aws s3 sync dist/_astro "s3://${{ vars.S3_BUCKET }}/_astro" --delete \
+            --cache-control "public,max-age=31536000,immutable"
+
+      - name: Invalidate CloudFront
+        run: aws cloudfront create-invalidation --distribution-id "${{ vars.CLOUDFRONT_DISTRIBUTION_ID }}" --paths "/*"

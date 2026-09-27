@@ -10,6 +10,7 @@ interface Props {
   min?: string;
   max?: string;
   persist?: boolean;
+  autocomplete?: string;
   class?: string;
 }
 
@@ -24,6 +25,7 @@ const {
   min,
   max,
   persist = false,
+  autocomplete,
   class: className = "",
 } = Astro.props;
 ---
@@ -42,6 +44,7 @@ const {
     list={list}
     min={min}
     max={max}
+    autocomplete={autocomplete}
     data-persist={persist ? "" : undefined}
     class="mt-1.5 w-full rounded-lg border border-border bg-white px-3.5 py-2.5 text-sm text-text focus-visible:border-blue"
   />
