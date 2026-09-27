@@ -2,10 +2,11 @@
 import Layout from "../layouts/Layout.astro";
 import Section from "../components/Section.astro";
 import Field from "../components/Field.astro";
-import { EXPENSE_CATEGORIES, PAYMENT_STATUSES } from "../data/expenses";
+import { EXPENSE_CATEGORIES, PAYMENT_STATUSES, AUTO_RENEWAL_OPTIONS, DOCUMENT_ACCEPT, DOCUMENT_MAX_BYTES } from "../data/expenses";
 
 const today = new Date().toISOString().slice(0, 10);
 const selectClass = "mt-1.5 w-full rounded-lg border border-border bg-white px-3.5 py-2.5 text-sm text-text focus-visible:border-blue";
+const maxDocumentMb = DOCUMENT_MAX_BYTES / (1024 * 1024);
 ---
 
 <Layout title="Expense Tracker | Sloud Solutions Portal">
@@ -60,6 +61,8 @@ const selectClass = "mt-1.5 w-full rounded-lg border border-border bg-white px-3
                   <th class="px-3 py-3 font-semibold">Paid by</th>
                   <th class="px-3 py-3 text-right font-semibold">Amount</th>
                   <th class="px-3 py-3 font-semibold">Status</th>
+                  <th class="px-3 py-3 font-semibold">Expiry</th>
+                  <th class="px-3 py-3 font-semibold">Document</th>
                   <th class="px-3 py-3"><span class="sr-only">Actions</span></th>
                 </tr>
               </thead>
@@ -68,7 +71,7 @@ const selectClass = "mt-1.5 w-full rounded-lg border border-border bg-white px-3
                 <tr class="border-t border-border bg-bg-alt">
                   <td colspan="4" class="px-3 py-3 text-right text-xs font-semibold uppercase tracking-wide text-text-muted">Total shown</td>
                   <td id="shown-total" class="px-3 py-3 text-right font-semibold text-navy"></td>
-                  <td colspan="2"></td>
+                  <td colspan="4"></td>
                 </tr>
               </tfoot>
             </table>
@@ -95,6 +98,26 @@ const selectClass = "mt-1.5 w-full rounded-lg border border-border bg-white px-3
             </select>
           </div>
           <Field id="notes" label="Notes" placeholder="Invoice number, remarks" />
+          <Field id="expiryDate" label="Expiry date" type="date" required />
+          <div>
+            <label for="autoRenewal" class="block text-sm font-medium text-navy">Auto renewal <span class="text-red-600" aria-hidden="true">*</span></label>
+            <select id="autoRenewal" name="autoRenewal" required class={selectClass}>
+              <option value="">Select…</option>
+              {AUTO_RENEWAL_OPTIONS.map((o) => <option>{o}</option>)}
+            </select>
+          </div>
+          <div>
+            <label for="document" class="block text-sm font-medium text-navy">Bill / payment document</label>
+            <input
+              id="document"
+              name="document"
+              type="file"
+              accept={DOCUMENT_ACCEPT}
+              class="mt-1.5 w-full rounded-lg border border-border bg-white px-3.5 py-2.5 text-sm text-text file:mr-3 file:rounded-md file:border-0 file:bg-bg-alt file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-navy focus-visible:border-blue"
+            />
+            <p class="mt-1 text-xs text-text-muted">PDF, JPG, or PNG, up to {maxDocumentMb} MB.</p>
+            <p id="document-error" class="mt-1 hidden text-xs text-red-600"></p>
+          </div>
           <button type="submit" class="w-full rounded-lg bg-blue px-6 py-3 text-sm font-semibold text-white shadow-sm hover:bg-blue-hover">
             Add purchase
           </button>
@@ -109,8 +132,9 @@ const selectClass = "mt-1.5 w-full rounded-lg border border-border bg-white px-3
 <script>
   import { requireLogin } from "../lib/auth";
   import { loadMe, hasAccess } from "../lib/access";
-  import { listExpenses, createExpense, deleteExpense, ApiError } from "../lib/api";
+  import { listExpenses, createExpense, deleteExpense, uploadExpenseDocument, ApiError } from "../lib/api";
   import type { Expense } from "../data/expenses";
+  import { DOCUMENT_ALLOWED_TYPES, DOCUMENT_MAX_BYTES } from "../data/expenses";
 
   async function init() {
     if (!requireLogin()) return;
@@ -216,7 +240,40 @@ const selectClass = "mt-1.5 w-full rounded-lg border border-border bg-white px-3
           });
           actions.append(remove);
 
-          tr.append(cell(fmtDate(e.date), "whitespace-nowrap"), item, cell(e.category), cell(e.paidBy), cell(inr(e.amount), "text-right font-medium text-navy whitespace-nowrap"), statusTd, actions);
+          const expiryTd = cell(fmtDate(e.expiryDate), "whitespace-nowrap");
+          if (e.autoRenewal === "Yes") {
+            const badge = document.createElement("span");
+            badge.className = "ml-1.5 rounded-full bg-bg-alt px-1.5 py-0.5 text-[10px] font-medium text-text-muted align-middle";
+            badge.textContent = "Auto-renews";
+            expiryTd.append(badge);
+          }
+
+          const documentTd = document.createElement("td");
+          documentTd.className = "px-3 py-3";
+          if (e.documentUrl) {
+            const link = document.createElement("a");
+            link.href = e.documentUrl;
+            link.target = "_blank";
+            link.rel = "noopener noreferrer";
+            link.className = "text-xs font-medium text-blue hover:underline";
+            link.textContent = e.documentName || "View";
+            documentTd.append(link);
+          } else {
+            documentTd.className += " text-xs text-text-muted";
+            documentTd.textContent = "—";
+          }
+
+          tr.append(
+            cell(fmtDate(e.date), "whitespace-nowrap"),
+            item,
+            cell(e.category),
+            cell(e.paidBy),
+            cell(inr(e.amount), "text-right font-medium text-navy whitespace-nowrap"),
+            statusTd,
+            expiryTd,
+            documentTd,
+            actions,
+          );
           return tr;
         }),
       );
@@ -229,13 +286,42 @@ const selectClass = "mt-1.5 w-full rounded-lg border border-border bg-white px-3
 
     filterCategory.addEventListener("change", render);
     filterStatus.addEventListener("change", render);
+    const documentInput = $("document") as HTMLInputElement;
+    const documentError = $("document-error");
+    const showDocumentError = (message: string) => {
+      documentError.textContent = message;
+      documentError.classList.remove("hidden");
+    };
+
     form.addEventListener("submit", async (event) => {
       event.preventDefault();
+      documentError.classList.add("hidden");
       if (!form.reportValidity()) return;
+
+      const file = documentInput.files?.[0];
+      if (file) {
+        if (!DOCUMENT_ALLOWED_TYPES.includes(file.type)) {
+          showDocumentError("Only PDF, JPG, or PNG files are accepted.");
+          return;
+        }
+        if (file.size > DOCUMENT_MAX_BYTES) {
+          showDocumentError(`That file is too large -- the limit is ${DOCUMENT_MAX_BYTES / (1024 * 1024)} MB.`);
+          return;
+        }
+      }
+
       const v = Object.fromEntries(new FormData(form).entries()) as Record<string, string>;
       const submitButton = form.querySelector<HTMLButtonElement>("button[type=submit]")!;
       submitButton.disabled = true;
       try {
+        let documentUrl = "";
+        let documentName = "";
+        if (file) {
+          const uploaded = await uploadExpenseDocument(file);
+          documentUrl = uploaded.documentUrl;
+          documentName = uploaded.documentName;
+        }
+
         const created = await createExpense({
           date: v.date,
           item: v.item.trim(),
@@ -245,6 +331,10 @@ const selectClass = "mt-1.5 w-full rounded-lg border border-border bg-white px-3
           paidBy: v.paidBy.trim(),
           status: v.status as Expense["status"],
           notes: (v.notes ?? "").trim(),
+          expiryDate: v.expiryDate,
+          autoRenewal: v.autoRenewal as Expense["autoRenewal"],
+          documentUrl,
+          documentName,
         });
         expenses.push(created);
         form.reset();

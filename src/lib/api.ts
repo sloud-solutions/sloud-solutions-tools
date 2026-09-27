@@ -49,6 +49,22 @@ export const createExpense = (expense: Omit<Expense, "id" | "createdBy" | "creat
   request<Expense>("/expenses", { method: "POST", body: JSON.stringify(expense) });
 export const deleteExpense = (id: string) => request<void>(`/expenses/${encodeURIComponent(id)}`, { method: "DELETE" });
 
+interface DocumentUploadUrl {
+  uploadUrl: string;
+  documentUrl: string;
+}
+
+/** Gets a presigned S3 PUT URL for a bill/receipt upload, then puts the file directly to S3. */
+export async function uploadExpenseDocument(file: File): Promise<{ documentUrl: string; documentName: string }> {
+  const { uploadUrl, documentUrl } = await request<DocumentUploadUrl>("/expenses/document-url", {
+    method: "POST",
+    body: JSON.stringify({ contentType: file.type, sizeBytes: file.size }),
+  });
+  const putRes = await fetch(uploadUrl, { method: "PUT", headers: { "Content-Type": file.type }, body: file });
+  if (!putRes.ok) throw new ApiError("The document upload failed. Please try again.");
+  return { documentUrl, documentName: file.name };
+}
+
 export const listEmployees = () => request<Employee[]>("/employees");
 export const deleteEmployee = (id: string) => request<void>(`/employees/${encodeURIComponent(id)}`, { method: "DELETE" });
 
