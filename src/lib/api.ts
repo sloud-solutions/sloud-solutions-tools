@@ -48,6 +48,8 @@ export const listExpenses = () => request<Expense[]>("/expenses");
 export const createExpense = (expense: Omit<Expense, "id" | "createdBy" | "createdAt">) =>
   request<Expense>("/expenses", { method: "POST", body: JSON.stringify(expense) });
 export const deleteExpense = (id: string) => request<void>(`/expenses/${encodeURIComponent(id)}`, { method: "DELETE" });
+export const updateExpense = (id: string, expense: Omit<Expense, "id" | "createdBy" | "createdAt">) =>
+  request<Expense>(`/expenses/${encodeURIComponent(id)}`, { method: "PATCH", body: JSON.stringify(expense) });
 
 interface DocumentUploadUrl {
   uploadUrl: string;
