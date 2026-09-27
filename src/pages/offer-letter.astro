@@ -16,7 +16,7 @@ const legendClass = "text-base font-semibold text-heading";
 
 <Layout title="Offer Letter Generator | Sloud Solutions Portal">
   <div id="app" class="hidden">
-  <Section background="white" maxWidth="narrow" class="text-center">
+  <Section background="white" maxWidth="narrow" class="animate-in text-center">
     <p class="text-sm font-semibold uppercase tracking-wider text-blue">Offer Letter</p>
     <h1 class="mt-4 text-4xl font-bold leading-tight sm:text-5xl">Offer Letter Generator</h1>
     <p class="mx-auto mt-6 max-w-2xl text-lg leading-relaxed">
@@ -26,7 +26,7 @@ const legendClass = "text-base font-semibold text-heading";
 
   <Section background="alt">
     <div class="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-      <form id="offer-form" class="space-y-8 rounded-xl border border-border bg-white p-6 shadow-sm sm:p-8" novalidate>
+      <form id="offer-form" class="animate-in space-y-8 rounded-xl border border-border bg-white p-6 shadow-sm sm:p-8" style="animation-delay:70ms" novalidate>
         <fieldset class="space-y-5">
           <legend class={legendClass}>Letter</legend>
           <div class="grid gap-5 sm:grid-cols-2">
@@ -119,7 +119,7 @@ const legendClass = "text-base font-semibold text-heading";
         </button>
       </form>
 
-      <div class="rounded-xl border border-border bg-white p-6 shadow-sm sm:p-8 lg:sticky lg:top-24">
+      <div class="animate-in rounded-xl border border-border bg-white p-6 shadow-sm sm:p-8 lg:sticky lg:top-24" style="animation-delay:140ms">
         <div class="flex items-center justify-between gap-3">
           <h2 class="text-xl">Preview</h2>
           <div id="download-actions" class="hidden items-center gap-2">

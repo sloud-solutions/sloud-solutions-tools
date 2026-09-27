@@ -10,7 +10,7 @@ const selectClass = "mt-1.5 w-full rounded-lg border border-border bg-white px-3
 
 <Layout title="Expense Tracker | Sloud Solutions Portal">
   <div id="app" class="hidden">
-    <Section background="white" maxWidth="narrow" class="text-center">
+    <Section background="white" maxWidth="narrow" class="animate-in text-center">
       <p class="text-sm font-semibold uppercase tracking-wider text-blue">Finance</p>
       <h1 class="mt-4 text-4xl font-bold leading-tight sm:text-5xl">Expense Tracker</h1>
       <p class="mx-auto mt-6 max-w-2xl text-lg leading-relaxed">Record every company purchase and keep them in one place.</p>
@@ -18,15 +18,15 @@ const selectClass = "mt-1.5 w-full rounded-lg border border-border bg-white px-3
 
     <Section background="alt">
       <div class="grid gap-4 sm:grid-cols-3">
-        <div class="rounded-xl border border-border bg-white p-5 shadow-sm">
+        <div class="animate-in rounded-xl border border-border bg-white p-5 shadow-sm" style="animation-delay:0ms">
           <p class="text-xs font-semibold uppercase tracking-wide text-text-muted">Total spend</p>
           <p id="stat-total" class="mt-2 text-2xl font-bold text-navy">–</p>
         </div>
-        <div class="rounded-xl border border-border bg-white p-5 shadow-sm">
+        <div class="animate-in rounded-xl border border-border bg-white p-5 shadow-sm" style="animation-delay:70ms">
           <p class="text-xs font-semibold uppercase tracking-wide text-text-muted">This month</p>
           <p id="stat-month" class="mt-2 text-2xl font-bold text-navy">–</p>
         </div>
-        <div class="rounded-xl border border-border bg-white p-5 shadow-sm">
+        <div class="animate-in rounded-xl border border-border bg-white p-5 shadow-sm" style="animation-delay:140ms">
           <p class="text-xs font-semibold uppercase tracking-wide text-text-muted">Awaiting payment / reimbursement</p>
           <p id="stat-open" class="mt-2 text-2xl font-bold text-navy">–</p>
         </div>
@@ -179,8 +179,10 @@ const selectClass = "mt-1.5 w-full rounded-lg border border-border bg-white px-3
       $("shown-total").textContent = inr(shown.reduce((total, e) => total + e.amount, 0));
 
       rows.replaceChildren(
-        ...shown.map((e) => {
+        ...shown.map((e, i) => {
           const tr = document.createElement("tr");
+          tr.className = "animate-in";
+          tr.style.animationDelay = `${Math.min(i, 10) * 40}ms`;
 
           const item = document.createElement("td");
           item.className = "px-3 py-3";

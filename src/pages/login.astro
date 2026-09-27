@@ -2,11 +2,14 @@
 import Layout from "../layouts/Layout.astro";
 import Section from "../components/Section.astro";
 import Field from "../components/Field.astro";
+
+const passwordFieldClass = "mt-1.5 w-full rounded-lg border border-border bg-white px-3.5 py-2.5 text-sm text-text focus-visible:border-blue";
+const capsLockNoteClass = "mt-1 hidden text-xs font-medium text-amber-700";
 ---
 
 <Layout title="Log in | Sloud Solutions Portal">
   <Section background="alt" maxWidth="narrow">
-    <div class="mx-auto max-w-md rounded-xl border border-border bg-white p-6 shadow-sm sm:p-8">
+    <div class="animate-in mx-auto max-w-md rounded-xl border border-border bg-white p-6 shadow-sm sm:p-8">
       <h1 class="text-2xl">Log in</h1>
       <p id="login-subtitle" class="mt-2 text-sm text-text-muted">Sign in with your email and password.</p>
 
@@ -14,44 +17,41 @@ import Field from "../components/Field.astro";
         <Field id="username" label="Email" type="email" required autocomplete="username" />
         <div>
           <label for="password" class="block text-sm font-medium text-navy">Password <span class="text-red-600" aria-hidden="true">*</span></label>
-          <input
-            id="password"
-            name="password"
-            type="password"
-            required
-            autocomplete="current-password"
-            class="mt-1.5 w-full rounded-lg border border-border bg-white px-3.5 py-2.5 text-sm text-text focus-visible:border-blue"
-          />
+          <input id="password" name="password" type="password" required autocomplete="current-password" class={passwordFieldClass} />
+          <p id="login-caps" class={capsLockNoteClass}>Caps Lock is on</p>
         </div>
         <p id="login-error" class="hidden rounded-lg bg-red-50 p-3 text-sm text-red-800" role="alert"></p>
         <button type="submit" class="w-full rounded-lg bg-blue px-6 py-3 text-sm font-semibold text-white shadow-sm hover:bg-blue-hover">
           Log in
         </button>
-        <button
-          id="show-change-password"
-          type="button"
-          class="w-full text-center text-sm font-medium text-blue hover:underline"
-        >
+        <button id="show-change-password" type="button" class="w-full text-center text-sm font-medium text-blue hover:underline">
           Change your password
         </button>
       </form>
 
       <!-- Self-service change, not "forgot": there's no real mailbox to send
-           a reset code to here, so this proves identity with the current
+           a reset code to here, so this verifies identity with the current
            password instead of an emailed one. -->
       <form id="change-password-form" class="mt-6 hidden space-y-5" novalidate>
-        <p class="text-sm text-text">Enter your email, current password, and the new password you want.</p>
+        <p class="text-sm text-text">Verify your identity with your current password, then choose a new one.</p>
         <Field id="cp-username" label="Email" type="email" required autocomplete="username" />
         <div>
           <label for="cp-current" class="block text-sm font-medium text-navy">Current password <span class="text-red-600" aria-hidden="true">*</span></label>
-          <input id="cp-current" name="currentPassword" type="password" required autocomplete="current-password" class="mt-1.5 w-full rounded-lg border border-border bg-white px-3.5 py-2.5 text-sm text-text focus-visible:border-blue" />
+          <input id="cp-current" name="currentPassword" type="password" required autocomplete="current-password" class={passwordFieldClass} />
+          <p id="cp-current-caps" class={capsLockNoteClass}>Caps Lock is on</p>
         </div>
         <div>
           <label for="cp-new" class="block text-sm font-medium text-navy">New password <span class="text-red-600" aria-hidden="true">*</span></label>
-          <input id="cp-new" name="newPassword" type="password" required minlength="8" autocomplete="new-password" class="mt-1.5 w-full rounded-lg border border-border bg-white px-3.5 py-2.5 text-sm text-text focus-visible:border-blue" />
+          <input id="cp-new" name="newPassword" type="password" required minlength="8" autocomplete="new-password" class={passwordFieldClass} />
+          <p id="cp-new-caps" class={capsLockNoteClass}>Caps Lock is on</p>
+        </div>
+        <div>
+          <label for="cp-confirm" class="block text-sm font-medium text-navy">Confirm new password <span class="text-red-600" aria-hidden="true">*</span></label>
+          <input id="cp-confirm" name="confirmPassword" type="password" required minlength="8" autocomplete="new-password" class={passwordFieldClass} />
+          <p id="cp-confirm-caps" class={capsLockNoteClass}>Caps Lock is on</p>
         </div>
         <p id="change-password-error" class="hidden rounded-lg bg-red-50 p-3 text-sm text-red-800" role="alert"></p>
-        <p id="change-password-success" class="hidden rounded-lg bg-emerald-50 p-3 text-sm text-emerald-800" role="status">Password changed — log in with your new password.</p>
+        <p id="change-password-success" class="hidden rounded-lg bg-emerald-50 p-3 text-sm text-emerald-800" role="status">Your password has been changed. Log in with your new password.</p>
         <button type="submit" class="w-full rounded-lg bg-blue px-6 py-3 text-sm font-semibold text-white shadow-sm hover:bg-blue-hover">
           Change password
         </button>
@@ -66,15 +66,13 @@ import Field from "../components/Field.astro";
         <p class="text-sm text-text">This is your first login — set a permanent password to continue.</p>
         <div>
           <label for="new-password" class="block text-sm font-medium text-navy">New password <span class="text-red-600" aria-hidden="true">*</span></label>
-          <input
-            id="new-password"
-            name="newPassword"
-            type="password"
-            required
-            minlength="8"
-            autocomplete="new-password"
-            class="mt-1.5 w-full rounded-lg border border-border bg-white px-3.5 py-2.5 text-sm text-text focus-visible:border-blue"
-          />
+          <input id="new-password" name="newPassword" type="password" required minlength="8" autocomplete="new-password" class={passwordFieldClass} />
+          <p id="new-password-caps" class={capsLockNoteClass}>Caps Lock is on</p>
+        </div>
+        <div>
+          <label for="new-password-confirm" class="block text-sm font-medium text-navy">Confirm new password <span class="text-red-600" aria-hidden="true">*</span></label>
+          <input id="new-password-confirm" name="confirmPassword" type="password" required minlength="8" autocomplete="new-password" class={passwordFieldClass} />
+          <p id="new-password-confirm-caps" class={capsLockNoteClass}>Caps Lock is on</p>
         </div>
         <p id="new-password-error" class="hidden rounded-lg bg-red-50 p-3 text-sm text-red-800" role="alert"></p>
         <button type="submit" class="w-full rounded-lg bg-blue px-6 py-3 text-sm font-semibold text-white shadow-sm hover:bg-blue-hover">
@@ -87,6 +85,7 @@ import Field from "../components/Field.astro";
 
 <script>
   import { login, completeNewPassword, changeOwnPassword, isLoggedIn } from "../lib/auth";
+  import { watchCapsLock } from "../lib/ui";
 
   const params = new URLSearchParams(location.search);
   const next = params.get("next");
@@ -94,16 +93,25 @@ import Field from "../components/Field.astro";
   const target = next && next.startsWith("/") && !next.startsWith("//") ? next : "/expenses";
   if (isLoggedIn()) location.replace(target);
 
-  const subtitle = document.getElementById("login-subtitle") as HTMLElement;
-  const loginForm = document.getElementById("login-form") as HTMLFormElement;
-  const loginError = document.getElementById("login-error") as HTMLElement;
-  const newPasswordForm = document.getElementById("new-password-form") as HTMLFormElement;
-  const newPasswordError = document.getElementById("new-password-error") as HTMLElement;
-  const showChangePassword = document.getElementById("show-change-password") as HTMLButtonElement;
-  const changePasswordForm = document.getElementById("change-password-form") as HTMLFormElement;
-  const changePasswordError = document.getElementById("change-password-error") as HTMLElement;
-  const changePasswordSuccess = document.getElementById("change-password-success") as HTMLElement;
-  const backToLogin = document.getElementById("back-to-login") as HTMLButtonElement;
+  const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
+
+  const subtitle = $("login-subtitle");
+  const loginForm = $<HTMLFormElement>("login-form");
+  const loginError = $("login-error");
+  const newPasswordForm = $<HTMLFormElement>("new-password-form");
+  const newPasswordError = $("new-password-error");
+  const showChangePassword = $<HTMLButtonElement>("show-change-password");
+  const changePasswordForm = $<HTMLFormElement>("change-password-form");
+  const changePasswordError = $("change-password-error");
+  const changePasswordSuccess = $("change-password-success");
+  const backToLogin = $<HTMLButtonElement>("back-to-login");
+
+  watchCapsLock($("password"), $("login-caps"));
+  watchCapsLock($("cp-current"), $("cp-current-caps"));
+  watchCapsLock($("cp-new"), $("cp-new-caps"));
+  watchCapsLock($("cp-confirm"), $("cp-confirm-caps"));
+  watchCapsLock($("new-password"), $("new-password-caps"));
+  watchCapsLock($("new-password-confirm"), $("new-password-confirm-caps"));
 
   showChangePassword.addEventListener("click", () => {
     loginForm.classList.add("hidden");
@@ -122,12 +130,28 @@ import Field from "../components/Field.astro";
     event.preventDefault();
     if (!changePasswordForm.reportValidity()) return;
     changePasswordError.classList.add("hidden");
+
     const data = new FormData(changePasswordForm);
-    const result = await changeOwnPassword(
-      String(data.get("cp-username")).trim(),
-      String(data.get("currentPassword")),
-      String(data.get("newPassword")),
-    );
+    const email = String(data.get("cp-username")).trim();
+    const currentPassword = String(data.get("currentPassword"));
+    const newPassword = String(data.get("newPassword"));
+    const confirmPassword = String(data.get("confirmPassword"));
+
+    if (newPassword !== confirmPassword) {
+      changePasswordError.textContent = "New password and confirm password don't match.";
+      changePasswordError.classList.remove("hidden");
+      return;
+    }
+    if (newPassword === currentPassword) {
+      changePasswordError.textContent = "You've already used this password. Please choose a different one.";
+      changePasswordError.classList.remove("hidden");
+      return;
+    }
+
+    const submitButton = changePasswordForm.querySelector<HTMLButtonElement>("button[type=submit]")!;
+    submitButton.disabled = true;
+    const result = await changeOwnPassword(email, currentPassword, newPassword);
+    submitButton.disabled = false;
     if (result.ok) {
       changePasswordForm.reset();
       changePasswordSuccess.classList.remove("hidden");
@@ -140,8 +164,12 @@ import Field from "../components/Field.astro";
   loginForm.addEventListener("submit", async (event) => {
     event.preventDefault();
     if (!loginForm.reportValidity()) return;
+    loginError.classList.add("hidden");
     const data = new FormData(loginForm);
+    const submitButton = loginForm.querySelector<HTMLButtonElement>("button[type=submit]")!;
+    submitButton.disabled = true;
     const result = await login(String(data.get("username")).trim(), String(data.get("password")));
+    submitButton.disabled = false;
     if (result.ok) {
       location.href = target;
       return;
@@ -159,8 +187,21 @@ import Field from "../components/Field.astro";
   newPasswordForm.addEventListener("submit", async (event) => {
     event.preventDefault();
     if (!newPasswordForm.reportValidity()) return;
+    newPasswordError.classList.add("hidden");
+
     const data = new FormData(newPasswordForm);
-    const result = await completeNewPassword(String(data.get("newPassword")));
+    const newPassword = String(data.get("newPassword"));
+    const confirmPassword = String(data.get("confirmPassword"));
+    if (newPassword !== confirmPassword) {
+      newPasswordError.textContent = "New password and confirm password don't match.";
+      newPasswordError.classList.remove("hidden");
+      return;
+    }
+
+    const submitButton = newPasswordForm.querySelector<HTMLButtonElement>("button[type=submit]")!;
+    submitButton.disabled = true;
+    const result = await completeNewPassword(newPassword);
+    submitButton.disabled = false;
     if (result.ok) {
       location.href = target;
       return;

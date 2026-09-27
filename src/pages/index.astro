@@ -45,7 +45,7 @@ const cards: { href: string; title: string; description: string; icon: IconName;
 
 <Layout>
   <div id="app" class="hidden">
-    <Section background="white" maxWidth="narrow" class="text-center">
+    <Section background="white" maxWidth="narrow" class="animate-in text-center">
       <p class="text-sm font-semibold uppercase tracking-wider text-blue">Internal Portal</p>
       <h1 class="mt-4 text-4xl font-bold leading-tight sm:text-5xl">Sloud Solutions Tools</h1>
       <p class="mx-auto mt-6 max-w-2xl text-lg leading-relaxed">Choose what you need below.</p>
@@ -54,11 +54,12 @@ const cards: { href: string; title: string; description: string; icon: IconName;
     <Section background="alt">
       <div class="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {
-          cards.map((card) => (
+          cards.map((card, i) => (
             <a
               href={card.href}
               data-page={card.page}
-              class="group flex flex-col rounded-xl border border-border bg-white p-8 shadow-sm hover:-translate-y-1 hover:shadow-lg"
+              class="animate-in group flex flex-col rounded-xl border border-border bg-white p-8 shadow-sm hover:-translate-y-1 hover:shadow-lg"
+              style={`animation-delay:${i * 70}ms`}
             >
               <span class="flex h-12 w-12 items-center justify-center rounded-xl bg-blue/10 text-blue">
                 <Icon name={card.icon} class="h-6 w-6" />
