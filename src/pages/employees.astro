@@ -48,7 +48,14 @@ const selectClass = "mt-1.5 w-full rounded-lg border border-border bg-white px-3
         <form id="employee-form" class="rounded-xl border border-border bg-white p-6 shadow-sm" novalidate>
           <h2 id="form-heading" class="text-xl">Add employee</h2>
           <div class="mt-5 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            <Field id="employeeId" label="Employee ID" placeholder="e.g. EMP001" />
+            <Field
+              id="employeeId"
+              label="Employee ID"
+              required
+              placeholder="e.g. S1001"
+              pattern="S[A-Za-z0-9]+"
+              title="Must start with S, e.g. S1001"
+            />
             <Field id="name" label="Full name" required />
             <Field id="role" label="Role / designation" required placeholder="e.g. Cloud Engineer" />
             <div>
@@ -470,6 +477,13 @@ const selectClass = "mt-1.5 w-full rounded-lg border border-border bg-white px-3
       render();
       return; // No add-employee form for non-admins.
     }
+
+    const employeeIdInput = $("employeeId") as HTMLInputElement;
+    employeeIdInput.addEventListener("input", () => {
+      const caret = employeeIdInput.selectionStart;
+      employeeIdInput.value = employeeIdInput.value.toUpperCase();
+      if (caret !== null) employeeIdInput.setSelectionRange(caret, caret);
+    });
 
     function enterAddMode() {
       editingId = null;
