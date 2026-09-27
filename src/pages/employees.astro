@@ -232,8 +232,6 @@ const selectClass = "mt-1.5 w-full rounded-lg border border-border bg-white px-3
       errorBanner.classList.remove("hidden");
     };
 
-    if (isAdmin) toggle.classList.remove("hidden");
-
     let employees: Employee[] = [];
     try {
       employees = await listEmployees();
@@ -421,6 +419,8 @@ const selectClass = "mt-1.5 w-full rounded-lg border border-border bg-white px-3
       toggle.textContent = open ? "Close form" : "+ Add employee";
       if (open) (form.elements.namedItem("name") as HTMLInputElement).focus();
     });
+    // Only reveal the button once its click handler is actually attached.
+    toggle.classList.remove("hidden");
 
     accountRoleSelect.addEventListener("change", () => {
       accessFields.classList.toggle("hidden", accountRoleSelect.value === "Admin");
