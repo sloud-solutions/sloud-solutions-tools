@@ -19,6 +19,8 @@ export interface Me {
   email: string | null;
   role: AccountRole;
   access: PageKey[];
+  /** Falls back to the email if no Employees-table row was found (e.g. seed-time Admin). */
+  name: string;
 }
 
 const CACHE_KEY = "sloud:me";

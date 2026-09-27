@@ -58,17 +58,42 @@ const nav = [
               </a>
             ))
           }
-          <div id="account-info" class="ml-1 hidden items-center gap-2 border-l border-border pl-3">
-            <span id="account-role-badge" class="rounded-full px-2 py-0.5 text-xs font-semibold"></span>
-            <span id="account-email" class="max-w-[14rem] truncate text-sm text-text-muted" title=""></span>
+          <div id="account-menu" class="relative ml-1 hidden">
+            <button
+              id="account-trigger"
+              type="button"
+              class="flex h-9 w-9 items-center justify-center rounded-full bg-blue text-sm font-bold text-white shadow-sm hover:bg-blue-hover"
+              aria-haspopup="true"
+              aria-expanded="false"
+              aria-label="Account menu"
+            >
+              <span id="account-initials"></span>
+            </button>
+
+            <div
+              id="account-dropdown"
+              class="modal-panel absolute right-0 top-full z-50 mt-2 hidden w-72 origin-top-right rounded-xl border border-border bg-white p-4 shadow-lg"
+              role="menu"
+            >
+              <div class="flex items-center gap-3">
+                <span id="account-initials-lg" class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-blue text-base font-bold text-white"></span>
+                <div class="min-w-0">
+                  <p id="account-name" class="truncate text-sm font-semibold text-navy"></p>
+                  <p id="account-email" class="truncate text-xs text-text-muted"></p>
+                </div>
+              </div>
+              <p class="mt-3">
+                <span id="account-role-badge" class="rounded-full px-2.5 py-1 text-xs font-semibold"></span>
+              </p>
+              <button
+                id="logout-button"
+                type="button"
+                class="mt-4 w-full rounded-lg border border-border px-3 py-2 text-sm font-medium text-navy hover:bg-bg-alt hover:text-blue"
+              >
+                Log out
+              </button>
+            </div>
           </div>
-          <button
-            id="logout-button"
-            type="button"
-            class="hidden rounded-lg border border-border px-3 py-2 text-sm font-medium text-navy hover:bg-bg-alt hover:text-blue"
-          >
-            Log out
-          </button>
         </nav>
       </div>
     </header>
@@ -82,19 +107,50 @@ const nav = [
       import { isLoggedIn, logout } from "../lib/auth";
       import { loadMe, hasAccess, type PageKey } from "../lib/access";
 
-      const button = document.getElementById("logout-button");
       const navLinks = document.querySelectorAll<HTMLAnchorElement>("nav [data-page]");
-      const accountInfo = document.getElementById("account-info") as HTMLElement;
+      const accountMenu = document.getElementById("account-menu") as HTMLElement;
+      const accountTrigger = document.getElementById("account-trigger") as HTMLButtonElement;
+      const accountDropdown = document.getElementById("account-dropdown") as HTMLElement;
+      const accountInitials = document.getElementById("account-initials") as HTMLElement;
+      const accountInitialsLg = document.getElementById("account-initials-lg") as HTMLElement;
+      const accountName = document.getElementById("account-name") as HTMLElement;
       const accountEmail = document.getElementById("account-email") as HTMLElement;
       const accountRoleBadge = document.getElementById("account-role-badge") as HTMLElement;
+      const logoutButton = document.getElementById("logout-button") as HTMLButtonElement;
+
+      const initialsOf = (name: string) =>
+        name
+          .trim()
+          .split(/\s+/)
+          .slice(0, 2)
+          .map((part) => part[0]?.toUpperCase() ?? "")
+          .join("") || "?";
+
+      function closeDropdown() {
+        accountDropdown.classList.add("hidden");
+        accountTrigger.setAttribute("aria-expanded", "false");
+      }
+      function toggleDropdown() {
+        const open = accountDropdown.classList.toggle("hidden") === false;
+        accountTrigger.setAttribute("aria-expanded", String(open));
+      }
+      accountTrigger.addEventListener("click", (event) => {
+        event.stopPropagation();
+        toggleDropdown();
+      });
+      document.addEventListener("click", (event) => {
+        if (!accountMenu.contains(event.target as Node)) closeDropdown();
+      });
+      document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") closeDropdown();
+      });
+
+      logoutButton.addEventListener("click", () => {
+        logout();
+        location.href = "/login";
+      });
 
       if (isLoggedIn()) {
-        button?.classList.remove("hidden");
-        button?.addEventListener("click", () => {
-          logout();
-          location.href = "/login";
-        });
-
         loadMe()
           .then((me) => {
             navLinks.forEach((link) => {
@@ -102,14 +158,16 @@ const nav = [
               link.classList.toggle("hidden", !hasAccess(me, page));
             });
 
-            if (me.email) accountEmail.textContent = me.email;
-            accountEmail.title = me.email ?? "";
+            const initials = initialsOf(me.name || me.email || "");
+            accountInitials.textContent = initials;
+            accountInitialsLg.textContent = initials;
+            accountName.textContent = me.name || me.email || "";
+            accountEmail.textContent = me.email ?? "";
             accountRoleBadge.textContent = me.role;
             accountRoleBadge.className =
-              "rounded-full px-2 py-0.5 text-xs font-semibold " +
+              "rounded-full px-2.5 py-1 text-xs font-semibold " +
               (me.role === "Admin" ? "bg-navy/10 text-navy" : "bg-blue/10 text-blue");
-            accountInfo.classList.remove("hidden");
-            accountInfo.classList.add("flex");
+            accountMenu.classList.remove("hidden");
           })
           .catch(() => {
             // /me failed (expired token, etc.) — leave nav as-is; the page's
