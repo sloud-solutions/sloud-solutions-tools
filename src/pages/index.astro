@@ -44,50 +44,53 @@ const cards: { href: string; title: string; description: string; icon: IconName;
 ---
 
 <Layout>
-  <Section background="white" maxWidth="narrow" class="text-center">
-    <p class="text-sm font-semibold uppercase tracking-wider text-blue">Internal Portal</p>
-    <h1 class="mt-4 text-4xl font-bold leading-tight sm:text-5xl">Sloud Solutions Tools</h1>
-    <p class="mx-auto mt-6 max-w-2xl text-lg leading-relaxed">Choose what you need below.</p>
-  </Section>
+  <div id="app" class="hidden">
+    <Section background="white" maxWidth="narrow" class="text-center">
+      <p class="text-sm font-semibold uppercase tracking-wider text-blue">Internal Portal</p>
+      <h1 class="mt-4 text-4xl font-bold leading-tight sm:text-5xl">Sloud Solutions Tools</h1>
+      <p class="mx-auto mt-6 max-w-2xl text-lg leading-relaxed">Choose what you need below.</p>
+    </Section>
 
-  <Section background="alt">
-    <div class="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-      {
-        cards.map((card) => (
-          <a
-            href={card.href}
-            data-page={card.page}
-            class="group flex flex-col rounded-xl border border-border bg-white p-8 shadow-sm hover:-translate-y-1 hover:shadow-lg"
-          >
-            <span class="flex h-12 w-12 items-center justify-center rounded-xl bg-blue/10 text-blue">
-              <Icon name={card.icon} class="h-6 w-6" />
-            </span>
-            <h2 class="mt-5 text-xl group-hover:text-blue">{card.title}</h2>
-            <p class="mt-2 flex-1 text-sm leading-relaxed">{card.description}</p>
-            <span class="mt-5 inline-flex items-center gap-1.5 text-sm font-semibold text-blue">
-              Open
-              <Icon name="arrow-right" class="h-4 w-4" />
-            </span>
-          </a>
-        ))
-      }
-    </div>
-  </Section>
+    <Section background="alt">
+      <div class="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        {
+          cards.map((card) => (
+            <a
+              href={card.href}
+              data-page={card.page}
+              class="group flex flex-col rounded-xl border border-border bg-white p-8 shadow-sm hover:-translate-y-1 hover:shadow-lg"
+            >
+              <span class="flex h-12 w-12 items-center justify-center rounded-xl bg-blue/10 text-blue">
+                <Icon name={card.icon} class="h-6 w-6" />
+              </span>
+              <h2 class="mt-5 text-xl group-hover:text-blue">{card.title}</h2>
+              <p class="mt-2 flex-1 text-sm leading-relaxed">{card.description}</p>
+              <span class="mt-5 inline-flex items-center gap-1.5 text-sm font-semibold text-blue">
+                Open
+                <Icon name="arrow-right" class="h-4 w-4" />
+              </span>
+            </a>
+          ))
+        }
+      </div>
+    </Section>
+  </div>
 </Layout>
 
 <script>
-  import { isLoggedIn } from "../lib/auth";
+  import { requireLogin } from "../lib/auth";
   import { loadMe, hasAccess, type PageKey } from "../lib/access";
 
-  // Anonymous visitors see every card (clicking one just leads to /login);
+  // Hitting "/" (or any URL) with no session goes straight to /login first;
   // once logged in, cards the user can't open are hidden, same as the nav.
-  if (isLoggedIn()) {
-    loadMe()
-      .then((me) => {
-        document.querySelectorAll<HTMLAnchorElement>("[data-page]").forEach((card) => {
-          card.classList.toggle("hidden", !hasAccess(me, card.dataset.page as PageKey));
-        });
-      })
-      .catch(() => {});
+  async function init() {
+    if (!requireLogin()) return;
+    document.getElementById("app")!.classList.remove("hidden");
+
+    const me = await loadMe();
+    document.querySelectorAll<HTMLAnchorElement>("[data-page]").forEach((card) => {
+      card.classList.toggle("hidden", !hasAccess(me, card.dataset.page as PageKey));
+    });
   }
+  init();
 </script>
