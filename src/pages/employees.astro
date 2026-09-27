@@ -64,6 +64,18 @@ const selectClass = "mt-1.5 w-full rounded-lg border border-border bg-white px-3
               </select>
             </div>
             <Field id="email" label="Email (their login username)" type="email" required />
+            <div>
+              <label for="password" class="block text-sm font-medium text-navy">Initial password <span class="text-red-600" aria-hidden="true">*</span></label>
+              <input
+                id="password"
+                name="password"
+                type="text"
+                required
+                minlength="8"
+                placeholder="Share this with them directly"
+                class="mt-1.5 w-full rounded-lg border border-border bg-white px-3.5 py-2.5 text-sm text-text focus-visible:border-blue"
+              />
+            </div>
             <Field id="phone" label="Phone" type="tel" />
             <Field id="location" label="Location" placeholder="City, Country" />
             <Field id="joined" label="Joining date" type="date" required />
@@ -106,7 +118,7 @@ const selectClass = "mt-1.5 w-full rounded-lg border border-border bg-white px-3
             <button type="submit" class="rounded-lg bg-blue px-6 py-3 text-sm font-semibold text-white shadow-sm hover:bg-blue-hover">
               Save employee
             </button>
-            <p class="text-xs text-text-muted">Cognito emails them a temporary password; they set their own on first login.</p>
+            <p class="text-xs text-text-muted">No email is sent — share this password with them yourself.</p>
           </div>
         </form>
       </div>
@@ -184,7 +196,7 @@ const selectClass = "mt-1.5 w-full rounded-lg border border-border bg-white px-3
 <script>
   import { requireLogin } from "../lib/auth";
   import { loadMe, hasAccess, type PageKey } from "../lib/access";
-  import { listEmployees, deleteEmployee, createEmployeeWithLogin, ApiError } from "../lib/api";
+  import { listEmployees, deleteEmployee, createEmployeeWithLogin, resetPassword, ApiError } from "../lib/api";
   import type { Employee } from "../data/employees";
 
   async function init() {
@@ -363,6 +375,23 @@ const selectClass = "mt-1.5 w-full rounded-lg border border-border bg-white px-3
       }
 
       card.append(head, skills, details, work);
+
+      if (isAdmin) {
+        const reset = el("button", "mt-3 w-full text-center text-xs font-medium text-blue hover:underline", "Reset password");
+        reset.type = "button";
+        reset.addEventListener("click", async () => {
+          const newPassword = prompt(`New password for ${e.name} (min 8 characters). Share it with them yourself.`);
+          if (!newPassword) return;
+          try {
+            await resetPassword(e.email, newPassword);
+            alert(`Password reset for ${e.name}.`);
+          } catch (err) {
+            showError(err instanceof ApiError ? err.message : "Could not reset that password.");
+          }
+        });
+        card.append(reset);
+      }
+
       return card;
     }
 
@@ -438,6 +467,7 @@ const selectClass = "mt-1.5 w-full rounded-lg border border-border bg-white px-3
           skills: (v.skills ?? "").split(",").map((s) => s.trim()).filter(Boolean),
           workingMode: v.workingMode as Employee["workingMode"],
           email: v.email.trim(),
+          password: v.password,
           phone: (v.phone ?? "").trim(),
           location: (v.location ?? "").trim(),
           joined: v.joined,

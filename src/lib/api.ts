@@ -65,6 +65,8 @@ export interface NewEmployeePayload {
   workDashboard: string;
   accountRole: "Admin" | "Employee";
   access: string[];
+  /** Set directly by the Admin — these addresses aren't real mailboxes, so there's no email invite to rely on. */
+  password: string;
   /** Optional canvas-resized JPEG/PNG data URL — small enough to send inline. */
   photoDataUrl?: string;
 }
@@ -72,3 +74,7 @@ export interface NewEmployeePayload {
 /** Admin-only: creates the Cognito login and the Employees-table row together. */
 export const createEmployeeWithLogin = (payload: NewEmployeePayload) =>
   request<Employee>("/admin/users", { method: "POST", body: JSON.stringify(payload) });
+
+/** Admin-only: resets someone's password directly (share the new one with them out-of-band). */
+export const resetPassword = (email: string, password: string) =>
+  request<void>("/admin/reset-password", { method: "POST", body: JSON.stringify({ email, password }) });
