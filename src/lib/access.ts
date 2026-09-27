@@ -23,6 +23,8 @@ export interface Me {
   name: string;
   /** Job title / designation (e.g. "Founder and CEO") — distinct from `role` above. */
   jobTitle: string;
+  /** CloudFront URL of their uploaded profile picture; empty shows initials instead. */
+  photo: string;
 }
 
 const CACHE_KEY = "sloud:me";

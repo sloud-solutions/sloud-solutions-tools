@@ -63,12 +63,13 @@ const nav = [
             <button
               id="account-trigger"
               type="button"
-              class="flex h-9 w-9 items-center justify-center rounded-full bg-blue text-sm font-bold text-white shadow-sm hover:bg-blue-hover"
+              class="relative block h-9 w-9 overflow-hidden rounded-full shadow-sm"
               aria-haspopup="true"
               aria-expanded="false"
               aria-label="Account menu"
             >
-              <span id="account-initials"></span>
+              <span id="account-initials" class="flex h-full w-full items-center justify-center bg-blue text-sm font-bold text-white hover:bg-blue-hover"></span>
+              <img id="account-photo" alt="" class="hidden h-full w-full object-cover" />
             </button>
 
             <div
@@ -76,13 +77,12 @@ const nav = [
               class="modal-panel absolute right-0 top-full z-50 mt-2 hidden w-80 origin-top-right rounded-xl border border-border bg-white p-4 shadow-lg"
               role="menu"
             >
-              <div class="flex items-start gap-3">
-                <span id="account-initials-lg" class="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-blue text-base font-bold text-white"></span>
-                <div class="min-w-0">
-                  <p id="account-name" class="truncate text-base font-semibold text-navy"></p>
-                  <p id="account-job-title" class="truncate text-sm text-text-muted"></p>
-                  <span id="account-role-badge" class="mt-1.5 inline-block rounded-full px-2.5 py-0.5 text-xs font-semibold"></span>
-                </div>
+              <div class="flex items-center gap-3">
+                <span class="relative block h-12 w-12 shrink-0 overflow-hidden rounded-full">
+                  <span id="account-initials-lg" class="flex h-full w-full items-center justify-center bg-blue text-base font-bold text-white"></span>
+                  <img id="account-photo-lg" alt="" class="hidden h-full w-full object-cover" />
+                </span>
+                <p id="account-name" class="truncate text-base font-semibold text-navy"></p>
               </div>
 
               <div class="my-4 border-t border-border"></div>
@@ -91,6 +91,14 @@ const nav = [
               <p class="mt-2 flex items-center gap-2.5 text-sm text-text">
                 <Icon name="mail" class="h-4 w-4 shrink-0 text-text-muted" />
                 <span id="account-email" class="truncate"></span>
+              </p>
+              <p id="account-job-title-row" class="mt-2 flex items-center gap-2.5 text-sm text-text">
+                <Icon name="id-card" class="h-4 w-4 shrink-0 text-text-muted" />
+                <span id="account-job-title" class="truncate"></span>
+              </p>
+              <p class="mt-2 flex items-center gap-2.5 text-sm text-text">
+                <Icon name="shield-check" class="h-4 w-4 shrink-0 text-text-muted" />
+                <span id="account-role-badge" class="rounded-full px-2.5 py-0.5 text-xs font-semibold"></span>
               </p>
 
               <div class="my-4 border-t border-border"></div>
@@ -123,7 +131,10 @@ const nav = [
       const accountDropdown = document.getElementById("account-dropdown") as HTMLElement;
       const accountInitials = document.getElementById("account-initials") as HTMLElement;
       const accountInitialsLg = document.getElementById("account-initials-lg") as HTMLElement;
+      const accountPhoto = document.getElementById("account-photo") as HTMLImageElement;
+      const accountPhotoLg = document.getElementById("account-photo-lg") as HTMLImageElement;
       const accountName = document.getElementById("account-name") as HTMLElement;
+      const accountJobTitleRow = document.getElementById("account-job-title-row") as HTMLElement;
       const accountJobTitle = document.getElementById("account-job-title") as HTMLElement;
       const accountEmail = document.getElementById("account-email") as HTMLElement;
       const accountRoleBadge = document.getElementById("account-role-badge") as HTMLElement;
@@ -172,13 +183,21 @@ const nav = [
             const initials = initialsOf(me.name || me.email || "");
             accountInitials.textContent = initials;
             accountInitialsLg.textContent = initials;
+            if (me.photo) {
+              accountPhoto.src = me.photo;
+              accountPhotoLg.src = me.photo;
+              accountPhoto.classList.remove("hidden");
+              accountPhotoLg.classList.remove("hidden");
+              accountInitials.classList.add("hidden");
+              accountInitialsLg.classList.add("hidden");
+            }
             accountName.textContent = me.name || me.email || "";
             accountJobTitle.textContent = me.jobTitle;
-            accountJobTitle.classList.toggle("hidden", !me.jobTitle);
+            accountJobTitleRow.classList.toggle("hidden", !me.jobTitle);
             accountEmail.textContent = me.email ?? "";
             accountRoleBadge.textContent = me.role;
             accountRoleBadge.className =
-              "rounded-full px-2.5 py-1 text-xs font-semibold " +
+              "rounded-full px-2.5 py-0.5 text-xs font-semibold " +
               (me.role === "Admin" ? "bg-navy/10 text-navy" : "bg-blue/10 text-blue");
             accountMenu.classList.remove("hidden");
           })
