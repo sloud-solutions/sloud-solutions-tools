@@ -52,9 +52,9 @@ const selectClass = "mt-1.5 w-full rounded-lg border border-border bg-white px-3
               id="employeeId"
               label="Employee ID"
               required
-              placeholder="e.g. S1001"
-              pattern="S[A-Za-z0-9]+"
-              title="Must start with S, e.g. S1001"
+              placeholder="e.g. S1001 or S001-M"
+              pattern="S[A-Za-z0-9]+(-[A-Za-z]+)?"
+              title="Must start with S, e.g. S1001 or S001-M"
             />
             <Field id="name" label="Full name" required />
             <Field id="role" label="Role / designation" required placeholder="e.g. Cloud Engineer" />
