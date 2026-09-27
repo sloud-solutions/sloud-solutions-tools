@@ -50,6 +50,14 @@ const maxDocumentMb = DOCUMENT_MAX_BYTES / (1024 * 1024);
                 <option value="">All statuses</option>
                 {PAYMENT_STATUSES.map((s) => <option>{s}</option>)}
               </select>
+              <button
+                id="download-excel"
+                type="button"
+                class="inline-flex items-center gap-1.5 rounded-lg border border-border bg-white px-3 py-2 text-sm font-medium text-navy hover:bg-bg-alt"
+              >
+                <Icon name="file-text" class="h-4 w-4" />
+                Download
+              </button>
             </div>
           </div>
           <div class="overflow-x-auto">
@@ -260,10 +268,14 @@ const maxDocumentMb = DOCUMENT_MAX_BYTES / (1024 * 1024);
       $("stat-open").textContent = inr(sum(expenses.filter((e) => e.status !== "Paid")));
     }
 
-    function render() {
-      const shown = expenses
+    function visibleExpenses() {
+      return expenses
         .filter((e) => (!filterCategory.value || e.category === filterCategory.value) && (!filterStatus.value || e.status === filterStatus.value))
         .sort((a, b) => b.date.localeCompare(a.date));
+    }
+
+    function render() {
+      const shown = visibleExpenses();
       $("count").textContent = `(${shown.length})`;
       $("shown-total").textContent = inr(shown.reduce((total, e) => total + e.amount, 0));
 
@@ -357,6 +369,32 @@ const maxDocumentMb = DOCUMENT_MAX_BYTES / (1024 * 1024);
 
     filterCategory.addEventListener("change", render);
     filterStatus.addEventListener("change", render);
+
+    const csvCell = (value: string) => `"${value.replace(/"/g, '""')}"`;
+
+    function downloadCsv() {
+      const shown = visibleExpenses();
+      const headers = ["Date", "Item", "Vendor", "Category", "Amount (INR)", "Paid by", "Status", "Expiry date", "Auto renewal", "Document", "Notes"];
+      const lines = [headers.map(csvCell).join(",")];
+      for (const e of shown) {
+        lines.push(
+          [e.date, e.item, e.vendor, e.category, String(e.amount), e.paidBy, e.status, e.expiryDate, e.autoRenewal, e.documentUrl ?? "", e.notes ?? ""]
+            .map(csvCell)
+            .join(","),
+        );
+      }
+      // Leading BOM so Excel detects UTF-8 rather than mis-decoding the ₹ symbol / non-ASCII text.
+      const blob = new Blob(["﻿" + lines.join("\r\n")], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `expenses-${new Date().toISOString().slice(0, 10)}.csv`;
+      link.click();
+      URL.revokeObjectURL(url);
+    }
+
+    $("download-excel").addEventListener("click", downloadCsv);
+
     const documentInput = $("document") as HTMLInputElement;
     const documentError = $("document-error");
     const showDocumentError = (message: string) => {
