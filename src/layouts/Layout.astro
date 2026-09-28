@@ -47,13 +47,14 @@ const adminNav: { href: string; label: string; icon: IconName }[] = [
     />
   </head>
   <body class="bg-bg text-text antialiased">
-    <!-- Masthead banner, every page. aspect-[2508/627] matches the source
-         image exactly (LinkedIn-cover style: full width, no cropping) --
-         a fixed short height here previously cropped out most of the image. -->
+    <!-- Masthead banner, every page. Height-capped and centered (not full-
+         bleed) so it renders as a compact strip rather than dominating the
+         page -- aspect-[2508/627] still matches the source exactly, so the
+         capped height just scales the width down with it, no cropping. -->
     <img
       src="/images/brand/banner-strategy-today.webp"
       alt="Sloud Solutions — Strategy Today. Brighter Tomorrow. Engineering, Automation, Architecture — helping businesses modernize, automate, and scale."
-      class="aspect-[2508/627] w-full object-cover"
+      class="aspect-[2508/627] h-20 w-auto mx-auto object-cover sm:h-24 lg:h-28"
       width="2508"
       height="627"
     />
