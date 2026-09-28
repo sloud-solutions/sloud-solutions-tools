@@ -160,6 +160,37 @@ export interface CloudResourcesResponse {
 /** Admin-only: live account-wide inventory via AWS Resource Explorer. */
 export const listCloudResources = () => request<CloudResourcesResponse>("/cloud-resources");
 
+export interface CostByService {
+  service: string;
+  amount: number;
+}
+
+export interface CostBudget {
+  name: string;
+  limit: number;
+  unit: string;
+  period: string;
+  actualSpend: number;
+}
+
+export interface CostSummary {
+  total: number;
+  currency: string;
+  byService: CostByService[];
+  budget: CostBudget | null;
+  periodStart: string;
+  periodEnd: string;
+  updatedAt: string | null;
+}
+
+/**
+ * Admin-only: reads a cache written by a scheduled Lambda, never calls Cost
+ * Explorer itself -- safe to call as often as the page wants (it's a plain
+ * DynamoDB read), since Cost Explorer is billed per API request and must
+ * stay decoupled from page views. See sloud-solutions-infra's cost-poller.
+ */
+export const getCostSummary = () => request<CostSummary>("/cost-summary");
+
 export const listWorkTasks = (boardId: string) => request<WorkTask[]>(`/work-boards/${encodeURIComponent(boardId)}/tasks`);
 export const createWorkTask = (boardId: string, payload: Omit<WorkTask, "id" | "boardId" | "createdBy" | "createdAt" | "updatedAt">) =>
   request<WorkTask>(`/work-boards/${encodeURIComponent(boardId)}/tasks`, { method: "POST", body: JSON.stringify(payload) });
