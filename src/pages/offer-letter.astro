@@ -64,7 +64,7 @@ const legendClass = "text-base font-semibold text-heading";
           </div>
         </fieldset>
 
-        <fieldset class="space-y-5">
+        <fieldset data-type-fields="internship" hidden class="space-y-5">
           <legend class={legendClass}>Internship</legend>
           <div class="grid gap-5 sm:grid-cols-2">
             <Field id="roleTitle" label="Role title" required />
@@ -99,6 +99,76 @@ const legendClass = "text-base font-semibold text-heading";
             <Field id="payDay" label="Paid by day of next month" type="number" min="1" max="31" value="7" class="hidden" />
             <Field id="noticeDays" label="Termination notice (days)" type="number" required min="1" max="30" value="7" />
             <Field id="acceptBy" label="Acceptance due date" type="date" required />
+          </div>
+        </fieldset>
+
+        <fieldset data-type-fields="full-time" hidden class="space-y-5">
+          <legend class={legendClass}>Full-time employment</legend>
+          <div class="grid gap-5 sm:grid-cols-2">
+            <Field id="ftDesignation" label="Designation" required />
+            <div>
+              <Field id="ftDepartment" label="Department" required list="team-options-ft" />
+              <datalist id="team-options-ft">
+                {SEGMENTS.map((s) => <option value={s.name} />)}
+              </datalist>
+            </div>
+            <Field id="ftReportingManagerName" label="Reporting manager name" required />
+            <Field id="ftReportingManagerDesignation" label="Reporting manager designation" required />
+            <Field id="ftDateOfJoining" label="Date of joining" type="date" required />
+            <Field id="ftWorkLocation" label="Work location" placeholder="e.g. Bengaluru" required />
+            <Field id="ftWorkingDaysHours" label="Working days and hours" required class="sm:col-span-2" placeholder="e.g. Monday to Friday, 9:30 am to 6:30 pm" />
+            <Field id="ftProbationMonths" label="Probation period (months)" type="number" required min="0" max="12" value="6" />
+            <Field id="ftNoticeDuringProbationDays" label="Notice during probation (days)" type="number" required min="0" max="90" value="15" />
+            <Field id="ftNoticeAfterConfirmationDays" label="Notice after confirmation (days)" type="number" required min="0" max="180" value="30" />
+            <Field id="ftLeaveEntitlementDays" label="Leave entitlement (days/year)" type="number" required min="0" max="60" value="18" />
+            <Field id="ftAcceptBy" label="Acceptance due date" type="date" required />
+          </div>
+
+          <div class="border-t border-border pt-5">
+            <p class="text-sm font-semibold text-navy">Annual CTC breakdown (INR)</p>
+            <div class="mt-3 grid gap-5 sm:grid-cols-2">
+              <Field id="ftAnnualCTC" label="Annual CTC (total)" type="number" required min="0" />
+              <Field id="ftBasicAmount" label="Basic salary" type="number" required min="0" />
+              <Field id="ftHraAmount" label="HRA" type="number" required min="0" />
+              <Field id="ftSpecialAllowanceAmount" label="Special allowance" type="number" required min="0" />
+              <Field id="ftOtherAllowancesAmount" label="Other allowances" type="number" min="0" value="0" />
+              <Field id="ftEmployerPfAmount" label="Employer PF contribution" type="number" required min="0" />
+              <Field id="ftGratuityProvisionAmount" label="Gratuity provision" type="number" min="0" value="0" />
+            </div>
+            <p id="ft-ctc-check" class="mt-3 text-sm"></p>
+          </div>
+        </fieldset>
+
+        <fieldset data-type-fields="part-time" hidden class="space-y-5">
+          <legend class={legendClass}>Part-time employment</legend>
+          <div class="grid gap-5 sm:grid-cols-2">
+            <Field id="ptDesignation" label="Designation" required />
+            <Field id="ptReportingManagerName" label="Reporting manager name" required />
+            <Field id="ptReportingManagerDesignation" label="Reporting manager designation" required />
+            <Field id="ptStartDate" label="Start date" type="date" required />
+            <Field id="ptWorkLocation" label="Work location" placeholder="e.g. Bengaluru" required />
+            <Field id="ptFixedDaysHours" label="Fixed days / hours per week" required class="sm:col-span-2" placeholder="e.g. Monday, Wednesday, Friday, 4 hours/day" />
+            <div>
+              <label for="ptHoursGuaranteed" class={labelClass}>Hours</label>
+              <select id="ptHoursGuaranteed" name="ptHoursGuaranteed" class={selectClass}>
+                <option value="guaranteed">Guaranteed</option>
+                <option value="variable">Variable, subject to work available</option>
+              </select>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+              <Field id="ptCompensationRate" label="Compensation rate (INR)" type="number" required min="0" />
+              <div>
+                <label for="ptCompensationUnit" class={labelClass}>Per</label>
+                <select id="ptCompensationUnit" name="ptCompensationUnit" class={selectClass}>
+                  <option value="hour">Hour</option>
+                  <option value="day">Day</option>
+                  <option value="month">Month</option>
+                </select>
+              </div>
+            </div>
+            <Field id="ptPaymentDay" label="Paid by day of next month" type="number" required min="1" max="31" value="7" />
+            <Field id="ptNoticeDays" label="Termination notice (days)" type="number" required min="0" max="90" value="15" />
+            <Field id="ptAcceptBy" label="Acceptance due date" type="date" required />
           </div>
         </fieldset>
 
@@ -240,13 +310,54 @@ const legendClass = "text-base font-semibold text-heading";
     return Boolean(option && option.dataset.hasTemplate === "true" && hasTemplateRules(typeSelect.value));
   }
 
+  // Only the fieldset matching the chosen type is shown -- and `disabled` on a
+  // <fieldset> also excludes its inputs from FormData and constraint validation,
+  // so the other types' required fields never block submission.
+  const typeFieldsets = [...form.querySelectorAll<HTMLFieldSetElement>("[data-type-fields]")];
+  function syncTypeFieldsets() {
+    for (const fs of typeFieldsets) {
+      const active = fs.dataset.typeFields === typeSelect.value;
+      fs.hidden = !active;
+      fs.disabled = !active;
+    }
+  }
+
+  syncTypeFieldsets();
+
   typeSelect.addEventListener("change", () => {
+    syncTypeFieldsets();
     const ready = templateReady();
     typeNote.classList.toggle("hidden", ready);
     if (!ready) {
       typeNote.textContent = `No letter template is available for "${typeSelect.selectedOptions[0].text.replace(" (template not added yet)", "")}" yet. Add a .docx template to its folder inside offerletter/.`;
     }
   });
+
+  // Full-time: keep the CTC component total in sync with the stated Annual CTC.
+  const ctcFieldIds = ["ftBasicAmount", "ftHraAmount", "ftSpecialAllowanceAmount", "ftOtherAllowancesAmount", "ftEmployerPfAmount", "ftGratuityProvisionAmount"];
+  const ftCtcCheck = document.getElementById("ft-ctc-check") as HTMLElement;
+  const ftAnnualCTC = document.getElementById("ftAnnualCTC") as HTMLInputElement;
+  function syncCtcCheck() {
+    const total = ctcFieldIds.reduce((sum, id) => sum + (Number((document.getElementById(id) as HTMLInputElement).value) || 0), 0);
+    const stated = Number(ftAnnualCTC.value) || 0;
+    const diff = stated - total;
+    const fmt = (n: number) => `INR ${n.toLocaleString("en-IN")}`;
+    if (!stated && !total) {
+      ftCtcCheck.textContent = "";
+      ftAnnualCTC.setCustomValidity("");
+      return;
+    }
+    if (Math.abs(diff) < 1) {
+      ftCtcCheck.textContent = `Components total ${fmt(total)} ✓ matches Annual CTC.`;
+      ftCtcCheck.className = "mt-3 text-sm text-emerald-700";
+      ftAnnualCTC.setCustomValidity("");
+    } else {
+      ftCtcCheck.textContent = `Components total ${fmt(total)} does not match Annual CTC ${fmt(stated)} (difference: ${fmt(Math.abs(diff))}).`;
+      ftCtcCheck.className = "mt-3 text-sm text-red-700";
+      ftAnnualCTC.setCustomValidity("The CTC components must add up to the stated Annual CTC.");
+    }
+  }
+  [...ctcFieldIds, "ftAnnualCTC"].forEach((id) => document.getElementById(id)!.addEventListener("input", syncCtcCheck));
 
   let objectUrl: string | null = null;
   let baseName = "Offer-Letter";
@@ -342,17 +453,61 @@ const legendClass = "text-base font-semibold text-heading";
       typeSelect.dispatchEvent(new Event("change"));
       return;
     }
-    if (value("endDate") < value("startDate")) {
+
+    const type = typeSelect.value;
+
+    if (type === "internship" && value("endDate") < value("startDate")) {
       (document.getElementById("endDate") as HTMLInputElement).setCustomValidity("End date must be after the start date.");
       form.reportValidity();
       (document.getElementById("endDate") as HTMLInputElement).setCustomValidity("");
       return;
     }
 
-    const type = typeSelect.value;
     const values = Object.fromEntries(
       [...new FormData(form).entries()].filter(([, v]) => typeof v === "string") as [string, string][],
     );
+
+    // The full-time/part-time fieldsets prefix their field ids (ft.../pt...) so
+    // they can coexist in the DOM without id/name clashes -- normalise them to
+    // the plain keys the template rules in ../lib/offer-letter expect.
+    if (type === "full-time") {
+      Object.assign(values, {
+        designation: values.ftDesignation,
+        department: values.ftDepartment,
+        reportingManagerName: values.ftReportingManagerName,
+        reportingManagerDesignation: values.ftReportingManagerDesignation,
+        dateOfJoining: values.ftDateOfJoining,
+        workLocation: values.ftWorkLocation,
+        workingDaysHours: values.ftWorkingDaysHours,
+        probationMonths: values.ftProbationMonths,
+        noticeDuringProbationDays: values.ftNoticeDuringProbationDays,
+        noticeAfterConfirmationDays: values.ftNoticeAfterConfirmationDays,
+        leaveEntitlementDays: values.ftLeaveEntitlementDays,
+        acceptBy: values.ftAcceptBy,
+        annualCTC: values.ftAnnualCTC,
+        basicAmount: values.ftBasicAmount,
+        hraAmount: values.ftHraAmount,
+        specialAllowanceAmount: values.ftSpecialAllowanceAmount,
+        otherAllowancesAmount: values.ftOtherAllowancesAmount,
+        employerPfAmount: values.ftEmployerPfAmount,
+        gratuityProvisionAmount: values.ftGratuityProvisionAmount,
+      });
+    } else if (type === "part-time") {
+      Object.assign(values, {
+        designation: values.ptDesignation,
+        reportingManagerName: values.ptReportingManagerName,
+        reportingManagerDesignation: values.ptReportingManagerDesignation,
+        startDate: values.ptStartDate,
+        workLocation: values.ptWorkLocation,
+        fixedDaysHours: values.ptFixedDaysHours,
+        hoursGuaranteed: values.ptHoursGuaranteed,
+        compensationRate: values.ptCompensationRate,
+        compensationUnit: values.ptCompensationUnit,
+        paymentDay: values.ptPaymentDay,
+        noticeDays: values.ptNoticeDays,
+        acceptBy: values.ptAcceptBy,
+      });
+    }
 
     try {
       const response = await fetch(`/offer-templates/${type}.docx`);
