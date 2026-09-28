@@ -15,7 +15,7 @@ import { COMPANY } from "../data/company";
       <p class="mt-4 text-sm font-semibold uppercase tracking-wider text-blue">Company Policy</p>
       <h1 class="mt-2 text-4xl font-bold leading-tight sm:text-5xl">Policies & Contact</h1>
       <p class="mx-auto mt-6 max-w-2xl text-lg leading-relaxed">
-        Placeholder content: replace with the real policy text.
+        The policies that guide how we work, and how to reach us.
       </p>
     </Section>
 
@@ -46,12 +46,12 @@ import { COMPANY } from "../data/company";
               <span>{COMPANY.hrContact}</span>
             </li>
             <li class="flex items-start gap-3">
-              <Icon name="phone" class="mt-0.5 h-5 w-5 shrink-0 text-blue" />
-              <span>{COMPANY.phone}</span>
-            </li>
-            <li class="flex items-start gap-3">
               <Icon name="map-pin" class="mt-0.5 h-5 w-5 shrink-0 text-blue" />
               <span>{COMPANY.address}</span>
+            </li>
+            <li class="flex items-start gap-3">
+              <Icon name="arrow-right" class="mt-0.5 h-5 w-5 shrink-0 text-blue" />
+              <a href={COMPANY.website} class="font-medium text-navy hover:text-blue" rel="noopener" target="_blank">sloudsolutions.com</a>
             </li>
             <li class="flex items-start gap-3">
               <Icon name="arrow-right" class="mt-0.5 h-5 w-5 shrink-0 text-blue" />

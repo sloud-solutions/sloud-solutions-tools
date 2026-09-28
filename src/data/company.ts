@@ -3,10 +3,8 @@ export const COMPANY = {
   email: "info@sloudsolutions.com",
   linkedin: "https://www.linkedin.com/company/sloudsolutions/",
   website: "https://sloudsolutions.com",
-  // PLACEHOLDER: replace with real values.
-  phone: "+00 000 000 0000",
-  address: "Company address line, City, Country",
-  hrContact: "HR Team, hr@sloudsolutions.com",
+  address: "Harur, Dharmapuri, Tamil Nadu, India",
+  hrContact: "HR Team, info@sloudsolutions.com",
 } as const;
 
 export const SEGMENTS = [
