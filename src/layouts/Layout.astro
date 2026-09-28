@@ -47,17 +47,22 @@ const adminNav: { href: string; label: string; icon: IconName }[] = [
     />
   </head>
   <body class="bg-bg text-text antialiased">
-    <!-- Masthead banner, every page. Height-capped and centered (not full-
-         bleed) so it renders as a compact strip rather than dominating the
-         page -- aspect-[2508/627] still matches the source exactly, so the
-         capped height just scales the width down with it, no cropping. -->
-    <img
-      src="/images/brand/banner-strategy-today.webp"
-      alt="Sloud Solutions — Strategy Today. Brighter Tomorrow. Engineering, Automation, Architecture — helping businesses modernize, automate, and scale."
-      class="aspect-[2508/627] h-20 w-auto mx-auto object-cover sm:h-24 lg:h-28"
-      width="2508"
-      height="627"
-    />
+    <!-- Masthead banner, every page. At this height a 4:1 image can't cover
+         edge-to-edge width without cropping out nearly all the text (height
+         would need to be ~4x the width to avoid it) -- so the source image
+         stays undistorted at its own aspect ratio and is centered on a
+         gradient that extends its own edge colors (sampled from the image:
+         navy on the left, light sky-blue on the right) to fill the rest of
+         the bar edge-to-edge. -->
+    <div class="flex h-20 items-center justify-center bg-gradient-to-r from-[#1f3a5a] via-[#2361a3] to-[#f2f2f4] sm:h-24 lg:h-28">
+      <img
+        src="/images/brand/banner-strategy-today.webp"
+        alt="Sloud Solutions — Strategy Today. Brighter Tomorrow. Engineering, Automation, Architecture — helping businesses modernize, automate, and scale."
+        class="h-full w-auto"
+        width="2508"
+        height="627"
+      />
+    </div>
 
     <div class="flex min-h-screen">
       <!-- Sidebar: logo at top, all pages listed vertically below it -->
