@@ -47,11 +47,13 @@ const adminNav: { href: string; label: string; icon: IconName }[] = [
     />
   </head>
   <body class="bg-bg text-text antialiased">
-    <!-- Masthead banner, every page -->
+    <!-- Masthead banner, every page. aspect-[2508/627] matches the source
+         image exactly (LinkedIn-cover style: full width, no cropping) --
+         a fixed short height here previously cropped out most of the image. -->
     <img
       src="/images/brand/banner-strategy-today.webp"
       alt="Sloud Solutions — Strategy Today. Brighter Tomorrow. Engineering, Automation, Architecture — helping businesses modernize, automate, and scale."
-      class="h-16 w-full object-cover sm:h-20 lg:h-24"
+      class="aspect-[2508/627] w-full object-cover"
       width="2508"
       height="627"
     />
@@ -60,7 +62,7 @@ const adminNav: { href: string; label: string; icon: IconName }[] = [
       <!-- Sidebar: logo at top, all pages listed vertically below it -->
       <aside
         id="sidebar"
-        class="fixed inset-y-0 left-0 z-40 flex w-72 -translate-x-full flex-col border-r border-border bg-white transition-transform duration-200 lg:sticky lg:top-0 lg:h-screen lg:translate-x-0"
+        class="fixed inset-y-0 left-0 z-40 flex w-72 -translate-x-full flex-col border-r border-border bg-white/90 backdrop-blur transition-transform duration-200 lg:sticky lg:top-0 lg:h-screen lg:translate-x-0"
       >
         <a href="/" class="flex items-center gap-3 border-b border-border px-5 py-4" aria-label="Sloud Solutions internal portal home">
           <img src="/images/brand/cropped_image.png" alt="Sloud Solutions" class="h-10 w-auto" width="459" height="185" />
@@ -210,7 +212,7 @@ const adminNav: { href: string; label: string; icon: IconName }[] = [
         background-image: url("/images/brand/bg-skyline.webp");
         background-size: cover;
         background-position: center;
-        opacity: 0.05;
+        opacity: 0.5;
         pointer-events: none;
       }
     </style>

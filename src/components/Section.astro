@@ -8,9 +8,10 @@ interface Props {
 
 const { id, background = "white", maxWidth = "default", class: className = "" } = Astro.props;
 
-// Slight transparency (not fully opaque) so the faint page-wide background
-// watermark set in Layout.astro is actually visible through page content.
-const backgroundClass = { white: "bg-white/95", alt: "bg-bg-alt/95" }[background];
+// Not fully opaque so the page-wide background watermark set in
+// Layout.astro is actually visible through page content (still light enough
+// to keep text legible).
+const backgroundClass = { white: "bg-white/85", alt: "bg-bg-alt/85" }[background];
 const maxWidthClass = { default: "max-w-[1200px]", narrow: "max-w-[800px]", wide: "max-w-[1600px]" }[maxWidth];
 ---
 
