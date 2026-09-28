@@ -4,7 +4,7 @@ import Section from "../components/Section.astro";
 import Icon from "../components/Icon.astro";
 import type { IconName } from "../components/Icon.astro";
 
-const cards: { href: string; title: string; description: string; icon: IconName; page: string }[] = [
+const cards: { href: string; title: string; description: string; icon: IconName; page: string; adminOnly?: boolean }[] = [
   {
     href: "/offer-letter",
     title: "Offer Letter",
@@ -47,6 +47,14 @@ const cards: { href: string; title: string; description: string; icon: IconName;
     icon: "kanban",
     page: "work-tracker",
   },
+  {
+    href: "/cloud-resources",
+    title: "Cloud Resource Tracker",
+    description: "Live AWS account inventory via Resource Explorer (Admin only).",
+    icon: "server",
+    page: "cloud-resources",
+    adminOnly: true,
+  },
 ];
 ---
 
@@ -65,6 +73,7 @@ const cards: { href: string; title: string; description: string; icon: IconName;
             <a
               href={card.href}
               data-page={card.page}
+              data-admin-only={card.adminOnly ? "true" : undefined}
               class="animate-in group flex flex-col rounded-xl border border-border bg-white p-8 shadow-sm hover:-translate-y-1 hover:shadow-lg"
               style={`animation-delay:${i * 70}ms`}
             >
@@ -101,7 +110,7 @@ const cards: { href: string; title: string; description: string; icon: IconName;
     const me = await loadMe();
     let visibleCount = 0;
     document.querySelectorAll<HTMLAnchorElement>("[data-page]").forEach((card) => {
-      const visible = hasAccess(me, card.dataset.page as PageKey);
+      const visible = card.dataset.adminOnly === "true" ? me.role === "Admin" : hasAccess(me, card.dataset.page as PageKey);
       card.classList.toggle("hidden", !visible);
       if (visible) visibleCount++;
     });

@@ -1,0 +1,291 @@
+---
+import Layout from "../layouts/Layout.astro";
+import Section from "../components/Section.astro";
+import Icon from "../components/Icon.astro";
+---
+
+<Layout title="Cloud Resource Tracker | Sloud Solutions Portal">
+  <div id="app" class="hidden">
+    <Section background="white" maxWidth="wide" class="animate-in text-center">
+      <span class="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-blue/10 text-blue">
+        <Icon name="server" class="h-7 w-7" />
+      </span>
+      <p class="mt-4 text-sm font-semibold uppercase tracking-wider text-blue">Admin</p>
+      <h1 class="mt-2 text-4xl font-bold leading-tight sm:text-5xl">Cloud Resource Tracker</h1>
+      <p class="mx-auto mt-6 max-w-2xl text-lg leading-relaxed">
+        A live inventory of every AWS resource in this account, powered by AWS Resource Explorer.
+      </p>
+    </Section>
+
+    <Section background="alt" maxWidth="wide">
+      <!-- Summary stat cards -->
+      <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div class="rounded-xl border border-border bg-white p-5 shadow-sm">
+          <p class="text-xs font-semibold uppercase tracking-wider text-text-muted">Total resources</p>
+          <p id="stat-total" class="mt-2 text-3xl font-bold text-navy">–</p>
+        </div>
+        <div class="rounded-xl border border-border bg-white p-5 shadow-sm">
+          <p class="text-xs font-semibold uppercase tracking-wider text-text-muted">Resource types</p>
+          <p id="stat-types" class="mt-2 text-3xl font-bold text-navy">–</p>
+        </div>
+        <div class="rounded-xl border border-border bg-white p-5 shadow-sm">
+          <p class="text-xs font-semibold uppercase tracking-wider text-text-muted">Regions</p>
+          <p id="stat-regions" class="mt-2 text-3xl font-bold text-navy">–</p>
+        </div>
+        <div class="rounded-xl border border-border bg-white p-5 shadow-sm">
+          <p class="text-xs font-semibold uppercase tracking-wider text-text-muted">Last refreshed</p>
+          <p id="stat-updated" class="mt-2 text-lg font-semibold text-navy">–</p>
+          <button
+            id="refresh-button"
+            type="button"
+            class="mt-2 inline-flex items-center gap-1.5 text-xs font-semibold text-blue hover:underline"
+          >
+            Refresh now
+          </button>
+        </div>
+      </div>
+
+      <!-- By-type breakdown -->
+      <div class="mt-6 rounded-xl border border-border bg-white p-6 shadow-sm">
+        <h2 class="text-lg font-semibold text-navy">Resources by type</h2>
+        <div id="type-breakdown" class="mt-4 space-y-2"></div>
+      </div>
+
+      <!-- Table -->
+      <div class="mt-6 flex flex-wrap items-center justify-between gap-3">
+        <h2 class="text-xl">All resources <span id="count" class="text-sm font-normal text-text-muted"></span></h2>
+        <div class="flex flex-wrap gap-2">
+          <input
+            id="search"
+            type="search"
+            placeholder="Search ARN or type"
+            aria-label="Search resources"
+            class="w-64 rounded-lg border border-border bg-white px-3 py-2 text-sm focus-visible:border-blue"
+          />
+          <select id="filter-type" class="rounded-lg border border-border bg-white px-3 py-2 text-sm" aria-label="Filter by resource type">
+            <option value="">All types</option>
+          </select>
+          <select id="filter-region" class="rounded-lg border border-border bg-white px-3 py-2 text-sm" aria-label="Filter by region">
+            <option value="">All regions</option>
+          </select>
+        </div>
+      </div>
+
+      <p id="error-banner" class="mt-6 hidden rounded-lg bg-red-50 p-3 text-sm text-red-800" role="alert"></p>
+      <p id="loading-note" class="mt-6 text-sm text-text-muted">Loading…</p>
+
+      <div id="table-wrap" class="mt-6 hidden overflow-x-auto rounded-xl border border-border bg-white shadow-sm">
+        <table class="w-full text-left text-sm">
+          <thead class="border-b border-border bg-bg-alt text-xs font-semibold uppercase tracking-wide text-text-muted">
+            <tr>
+              <th class="px-4 py-3">Type</th>
+              <th class="px-4 py-3">Identifier</th>
+              <th class="px-4 py-3">Region</th>
+              <th class="px-4 py-3">Last reported</th>
+            </tr>
+          </thead>
+          <tbody id="table-body"></tbody>
+        </table>
+      </div>
+      <p id="empty" class="mt-10 hidden text-center text-sm text-text-muted">No resources match your search.</p>
+    </Section>
+  </div>
+</Layout>
+
+<script>
+  import { requireLogin } from "../lib/auth";
+  import { loadMe } from "../lib/access";
+  import { listCloudResources, ApiError, type CloudResource } from "../lib/api";
+
+  const REFRESH_INTERVAL_MS = 60_000;
+
+  async function init() {
+    if (!requireLogin()) return;
+
+    const me = await loadMe();
+    if (me.role !== "Admin") {
+      location.replace("/"); // only shows the pages this person actually has, no "denied" message
+      return;
+    }
+    document.getElementById("app")!.classList.remove("hidden");
+
+    const $ = (id: string) => document.getElementById(id)!;
+    const loadingNote = $("loading-note");
+    const errorBanner = $("error-banner");
+    const tableWrap = $("table-wrap");
+    const tableBody = $("table-body");
+    const empty = $("empty");
+    const search = $("search") as HTMLInputElement;
+    const filterType = $("filter-type") as HTMLSelectElement;
+    const filterRegion = $("filter-region") as HTMLSelectElement;
+    const refreshButton = $("refresh-button") as HTMLButtonElement;
+    const statTotal = $("stat-total");
+    const statTypes = $("stat-types");
+    const statRegions = $("stat-regions");
+    const statUpdated = $("stat-updated");
+    const typeBreakdown = $("type-breakdown");
+
+    let resources: CloudResource[] = [];
+    let lastLoaded: Date | null = null;
+    let firstLoad = true;
+
+    const showError = (message: string) => {
+      errorBanner.textContent = message;
+      errorBanner.classList.remove("hidden");
+    };
+
+    function relativeTime(date: Date): string {
+      const seconds = Math.max(0, Math.round((Date.now() - date.getTime()) / 1000));
+      if (seconds < 10) return "just now";
+      if (seconds < 60) return `${seconds}s ago`;
+      const minutes = Math.round(seconds / 60);
+      if (minutes < 60) return `${minutes}m ago`;
+      const hours = Math.round(minutes / 60);
+      return `${hours}h ago`;
+    }
+
+    function fmtDateTime(iso: string): string {
+      if (!iso) return "–";
+      return new Date(iso).toLocaleString("en-IN", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
+    }
+
+    // Short, human ARN tail (e.g. `bucket-name` or `function:my-fn`) instead of the full ARN.
+    function shortIdentifier(arn: string): string {
+      const parts = arn.split(":");
+      return parts[parts.length - 1] || arn;
+    }
+
+    function el<K extends keyof HTMLElementTagNameMap>(tag: K, className = "", text?: string): HTMLElementTagNameMap[K] {
+      const node = document.createElement(tag);
+      if (className) node.className = className;
+      if (text !== undefined) node.textContent = text;
+      return node;
+    }
+
+    function populateFilters() {
+      const types = [...new Set(resources.map((r) => r.resourceType))].sort();
+      const regions = [...new Set(resources.map((r) => r.region || "global"))].sort();
+
+      const currentType = filterType.value;
+      filterType.innerHTML = '<option value="">All types</option>';
+      types.forEach((t) => {
+        const opt = el("option", "", t) as HTMLOptionElement;
+        opt.value = t;
+        filterType.append(opt);
+      });
+      filterType.value = types.includes(currentType) ? currentType : "";
+
+      const currentRegion = filterRegion.value;
+      filterRegion.innerHTML = '<option value="">All regions</option>';
+      regions.forEach((r) => {
+        const opt = el("option", "", r) as HTMLOptionElement;
+        opt.value = r;
+        filterRegion.append(opt);
+      });
+      filterRegion.value = regions.includes(currentRegion) ? currentRegion : "";
+    }
+
+    function renderStats() {
+      statTotal.textContent = String(resources.length);
+      statTypes.textContent = String(new Set(resources.map((r) => r.resourceType)).size);
+      statRegions.textContent = String(new Set(resources.map((r) => r.region || "global")).size);
+      statUpdated.textContent = lastLoaded ? relativeTime(lastLoaded) : "–";
+    }
+
+    function renderBreakdown() {
+      const counts = new Map<string, number>();
+      resources.forEach((r) => counts.set(r.resourceType, (counts.get(r.resourceType) ?? 0) + 1));
+      const sorted = [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 12);
+      const max = sorted[0]?.[1] ?? 1;
+
+      typeBreakdown.replaceChildren(
+        ...sorted.map(([type, count]) => {
+          const row = el("div", "flex items-center gap-3");
+          const label = el("span", "w-56 shrink-0 truncate text-sm text-text", type);
+          const barTrack = el("div", "h-2 flex-1 overflow-hidden rounded-full bg-bg-alt");
+          const bar = el("div", "h-full rounded-full bg-blue");
+          bar.style.width = `${Math.max(4, (count / max) * 100)}%`;
+          barTrack.append(bar);
+          const countLabel = el("span", "w-10 shrink-0 text-right text-sm font-semibold text-navy", String(count));
+          row.append(label, barTrack, countLabel);
+          return row;
+        }),
+      );
+    }
+
+    function renderTable() {
+      const query = search.value.trim().toLowerCase();
+      const shown = resources.filter((r) => {
+        if (filterType.value && r.resourceType !== filterType.value) return false;
+        if (filterRegion.value && (r.region || "global") !== filterRegion.value) return false;
+        if (!query) return true;
+        return r.arn.toLowerCase().includes(query) || r.resourceType.toLowerCase().includes(query);
+      });
+
+      $("count").textContent = `(${shown.length} of ${resources.length})`;
+      empty.classList.toggle("hidden", shown.length > 0);
+      tableWrap.classList.toggle("hidden", shown.length === 0);
+
+      tableBody.replaceChildren(
+        ...shown.map((r) => {
+          const row = el("tr", "border-b border-border last:border-0 hover:bg-bg-alt");
+          const typeCell = el("td", "px-4 py-3 font-medium text-navy", r.resourceType);
+          const idCell = el("td", "px-4 py-3 text-text-muted");
+          const idText = el("span", "font-mono text-xs", shortIdentifier(r.arn));
+          idText.title = r.arn;
+          idCell.append(idText);
+          const regionCell = el("td", "px-4 py-3 text-text", r.region || "global");
+          const updatedCell = el("td", "px-4 py-3 text-text-muted", fmtDateTime(r.lastReportedAt));
+          row.append(typeCell, idCell, regionCell, updatedCell);
+          return row;
+        }),
+      );
+    }
+
+    function renderAll() {
+      populateFilters();
+      renderStats();
+      renderBreakdown();
+      renderTable();
+    }
+
+    async function load() {
+      try {
+        const data = await listCloudResources();
+        resources = data.resources;
+        lastLoaded = new Date();
+        errorBanner.classList.add("hidden");
+      } catch (err) {
+        showError(err instanceof ApiError ? err.message : "Could not load resources from AWS.");
+        return;
+      } finally {
+        if (firstLoad) {
+          loadingNote.classList.add("hidden");
+          firstLoad = false;
+        }
+      }
+      renderAll();
+    }
+
+    search.addEventListener("input", renderTable);
+    filterType.addEventListener("change", renderTable);
+    filterRegion.addEventListener("change", renderTable);
+    refreshButton.addEventListener("click", () => {
+      refreshButton.disabled = true;
+      load().finally(() => {
+        refreshButton.disabled = false;
+      });
+    });
+
+    await load();
+
+    // Keep the "Last refreshed" label ticking, and re-fetch periodically so
+    // the dashboard stays current without the user needing to hit Refresh.
+    setInterval(() => {
+      statUpdated.textContent = lastLoaded ? relativeTime(lastLoaded) : "–";
+    }, 5_000);
+    setInterval(load, REFRESH_INTERVAL_MS);
+  }
+
+  init();
+</script>

@@ -17,7 +17,8 @@ export type IconName =
   | "id-card"
   | "x"
   | "pencil"
-  | "kanban";
+  | "kanban"
+  | "server";
 
 const { name, class: className = "", ...rest } = Astro.props;
 ---
@@ -114,6 +115,16 @@ const { name, class: className = "", ...rest } = Astro.props;
       <>
         <rect x="3.5" y="4.5" width="17" height="15" rx="2" />
         <path d="M8.5 4.5v8M13 4.5v5M17.5 4.5v11" />
+      </>
+    )
+  }
+  {
+    name === "server" && (
+      <>
+        <rect x="3.5" y="4" width="17" height="6.5" rx="1.5" />
+        <rect x="3.5" y="13.5" width="17" height="6.5" rx="1.5" />
+        <path d="M7 7.25h.01M7 16.75h.01" />
+        <path d="M11 7.25h4M11 16.75h4" />
       </>
     )
   }

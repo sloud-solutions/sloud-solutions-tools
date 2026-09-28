@@ -20,6 +20,10 @@ const nav = [
   { href: "/employees", label: "Employees", page: "employees" },
   { href: "/work-tracker", label: "Work Tracker", page: "work-tracker" },
 ];
+
+// Admin-only, account-wide (Resource Explorer), so it's gated by role alone,
+// not the per-employee page-access list like the items above.
+const adminNav = [{ href: "/cloud-resources", label: "Cloud Resource Tracker" }];
 ---
 
 <!doctype html>
@@ -53,6 +57,21 @@ const nav = [
                 aria-current={path === item.href ? "page" : undefined}
                 class:list={[
                   "rounded-lg px-3 py-2 text-sm font-medium hover:bg-bg-alt hover:text-blue",
+                  path === item.href ? "bg-bg-alt text-blue" : "text-navy",
+                ]}
+              >
+                {item.label}
+              </a>
+            ))
+          }
+          {
+            adminNav.map((item) => (
+              <a
+                href={item.href}
+                data-admin-page="true"
+                aria-current={path === item.href ? "page" : undefined}
+                class:list={[
+                  "hidden rounded-lg px-3 py-2 text-sm font-medium hover:bg-bg-alt hover:text-blue",
                   path === item.href ? "bg-bg-alt text-blue" : "text-navy",
                 ]}
               >
@@ -131,6 +150,7 @@ const nav = [
       import { loadMe, hasAccess, type PageKey } from "../lib/access";
 
       const navLinks = document.querySelectorAll<HTMLAnchorElement>("nav [data-page]");
+      const adminNavLinks = document.querySelectorAll<HTMLAnchorElement>("nav [data-admin-page]");
       const accountMenu = document.getElementById("account-menu") as HTMLElement;
       const accountTrigger = document.getElementById("account-trigger") as HTMLButtonElement;
       const accountDropdown = document.getElementById("account-dropdown") as HTMLElement;
@@ -186,6 +206,7 @@ const nav = [
               const page = link.dataset.page as PageKey;
               link.classList.toggle("hidden", !hasAccess(me, page));
             });
+            adminNavLinks.forEach((link) => link.classList.toggle("hidden", me.role !== "Admin"));
 
             const initials = initialsOf(me.name || me.email || "");
             accountInitials.textContent = initials;

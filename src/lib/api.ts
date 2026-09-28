@@ -143,6 +143,23 @@ export const updateWorkBoard = (id: string, payload: Partial<Omit<WorkBoard, "id
 /** Owner or Admin only — also deletes every task on the board. */
 export const deleteWorkBoard = (id: string) => request<void>(`/work-boards/${encodeURIComponent(id)}`, { method: "DELETE" });
 
+export interface CloudResource {
+  arn: string;
+  resourceType: string;
+  service: string;
+  region: string;
+  lastReportedAt: string;
+}
+
+export interface CloudResourcesResponse {
+  resources: CloudResource[];
+  count: number;
+  generatedAt: string;
+}
+
+/** Admin-only: live account-wide inventory via AWS Resource Explorer. */
+export const listCloudResources = () => request<CloudResourcesResponse>("/cloud-resources");
+
 export const listWorkTasks = (boardId: string) => request<WorkTask[]>(`/work-boards/${encodeURIComponent(boardId)}/tasks`);
 export const createWorkTask = (boardId: string, payload: Omit<WorkTask, "id" | "boardId" | "createdBy" | "createdAt" | "updatedAt">) =>
   request<WorkTask>(`/work-boards/${encodeURIComponent(boardId)}/tasks`, { method: "POST", body: JSON.stringify(payload) });
