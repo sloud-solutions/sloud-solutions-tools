@@ -38,6 +38,39 @@ const ordinal = (n: number) => {
   return `${n}${suffix}`;
 };
 
+const inr = (n: number) => Number(n || 0).toLocaleString("en-IN");
+
+const ONES = [
+  "", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten",
+  "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen", "Seventeen", "Eighteen", "Nineteen",
+];
+const TENS = ["", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety"];
+const twoDigitWords = (n: number): string => (n < 20 ? ONES[n] : `${TENS[Math.floor(n / 10)]}${n % 10 ? ` ${ONES[n % 10]}` : ""}`);
+const threeDigitWords = (n: number): string => {
+  const hundreds = Math.floor(n / 100);
+  const rest = n % 100;
+  return `${hundreds ? `${ONES[hundreds]} Hundred${rest ? " " : ""}` : ""}${rest ? twoDigitWords(rest) : ""}`;
+};
+/** Indian numbering (crore/lakh/thousand) — used for CTC-in-words on the full-time letter. */
+const numberToWordsIndian = (n: number): string => {
+  n = Math.round(n);
+  if (n === 0) return "Zero";
+  const crore = Math.floor(n / 1e7);
+  n %= 1e7;
+  const lakh = Math.floor(n / 1e5);
+  n %= 1e5;
+  const thousand = Math.floor(n / 1e3);
+  n %= 1e3;
+  const hundred = n;
+  const parts = [
+    crore && `${threeDigitWords(crore)} Crore`,
+    lakh && `${threeDigitWords(lakh)} Lakh`,
+    thousand && `${threeDigitWords(thousand)} Thousand`,
+    hundred && threeDigitWords(hundred),
+  ].filter(Boolean);
+  return parts.join(" ");
+};
+
 type Rule = [pattern: RegExp, replacement: string | (() => string)];
 
 // One rule builder per template folder name (offerletter/<folder>/).
@@ -84,6 +117,80 @@ export const TEMPLATE_RULES: Record<string, (v: FormValues) => Rule[]> = {
       [/\[Name \/ designated person or Internal Committee\] at \[email\]/g, `${v.poshName} at ${v.poshEmail}`],
       [/\[City, State\]/g, v.jurisdiction],
       [/on or before \[date\]/g, `on or before ${longDate(v.acceptBy)}`],
+    ];
+  },
+
+  "full-time"(v) {
+    const year = parseIso(v.letterDate).getFullYear();
+    const seq = pad2(Number(v.refNo) || 0);
+    const ctc = Number(v.annualCTC) || 0;
+
+    return [
+      [/\[Registered address, City, State, PIN\]/g, v.companyAddress],
+      [/\[CIN[^\]]*\]/g, v.companyRegNo || "@@REMOVE@@"],
+      [/\[YYYY\]/g, String(year)],
+      [/\[NN\]/g, seq],
+      [/\[DD Month YYYY\]/g, longDate(v.letterDate)],
+      [/\[Candidate Name\]/g, v.candidateName],
+      [/\[Address, City, State, PIN\]/g, v.candidateAddress],
+      [/\[Email\]/g, v.candidateEmail],
+      [/\[Phone\]/g, v.candidatePhone || "@@REMOVE@@"],
+      [/\[Designation\]/g, v.designation],
+      [/\[Department\]/g, v.department],
+      [/\[Reporting Manager Name\], \[Reporting Manager Designation\]/g, `${v.reportingManagerName}, ${v.reportingManagerDesignation}`],
+      [/\[Date of Joining, DD Month YYYY\]/g, longDate(v.dateOfJoining)],
+      [/\[Work Location\]/g, v.workLocation],
+      [/\[Working Days and Hours\]/g, v.workingDaysHours],
+      [/\[Probation Period Months\]/g, v.probationMonths],
+      [/\[Notice Period During Probation Days\]/g, v.noticeDuringProbationDays],
+      [/\[Notice Period After Confirmation Days\]/g, v.noticeAfterConfirmationDays],
+      [/\[Leave Entitlement Days\]/g, v.leaveEntitlementDays],
+      [/\[Annual CTC in Words\]/g, `${numberToWordsIndian(ctc)} Rupees`],
+      [/\[Annual CTC\]/g, inr(ctc)],
+      [/\[Basic Amount\]/g, inr(Number(v.basicAmount))],
+      [/\[HRA Amount\]/g, inr(Number(v.hraAmount))],
+      [/\[Special Allowance Amount\]/g, inr(Number(v.specialAllowanceAmount))],
+      [/\[Other Allowances Amount\]/g, inr(Number(v.otherAllowancesAmount))],
+      [/\[Employer PF Amount\]/g, inr(Number(v.employerPfAmount))],
+      [/\[Gratuity Provision Amount\]/g, inr(Number(v.gratuityProvisionAmount))],
+      [/\[POSH Contact Name\]/g, v.poshName],
+      [/\[POSH Contact Email\]/g, v.poshEmail],
+      [/\[Jurisdiction City, State\]/g, v.jurisdiction],
+      [/\[Acceptance Due Date, DD Month YYYY\]/g, longDate(v.acceptBy)],
+      [/\[Signatory Name\], \[Signatory Designation\]/g, `${v.signatoryName}, ${v.signatoryDesignation}`],
+    ];
+  },
+
+  "part-time"(v) {
+    const year = parseIso(v.letterDate).getFullYear();
+    const seq = pad2(Number(v.refNo) || 0);
+    const guaranteed = v.hoursGuaranteed === "guaranteed";
+    const rateUnit = v.compensationUnit || "hour";
+    const compensation = `INR ${inr(Number(v.compensationRate))} per ${rateUnit}`;
+
+    return [
+      [/\[Registered address, City, State, PIN\]/g, v.companyAddress],
+      [/\[CIN[^\]]*\]/g, v.companyRegNo || "@@REMOVE@@"],
+      [/\[YYYY\]/g, String(year)],
+      [/\[NN\]/g, seq],
+      [/\[DD Month YYYY\]/g, longDate(v.letterDate)],
+      [/\[Candidate Name\]/g, v.candidateName],
+      [/\[Address, City, State, PIN\]/g, v.candidateAddress],
+      [/\[Email\]/g, v.candidateEmail],
+      [/\[Phone\]/g, v.candidatePhone || "@@REMOVE@@"],
+      [/\[Designation\]/g, v.designation],
+      [/\[Reporting Manager Name\], \[Reporting Manager Designation\]/g, `${v.reportingManagerName}, ${v.reportingManagerDesignation}`],
+      [/\[Start Date, DD Month YYYY\]/g, longDate(v.startDate)],
+      [/\[Work Location\]/g, v.workLocation],
+      [/\[Fixed Days and Hours Per Week\]/g, v.fixedDaysHours],
+      [/\[Guaranteed \/ Variable, subject to work available\]/g, guaranteed ? "Guaranteed" : "Variable, subject to work available"],
+      [/\[Compensation Rate and Basis\], payable on \[Payment Date\] of the following month/g, `${compensation}, payable on the ${ordinal(Number(v.paymentDay))} of the following month`],
+      [/\[Notice Period Days\]/g, v.noticeDays],
+      [/\[POSH Contact Name\]/g, v.poshName],
+      [/\[POSH Contact Email\]/g, v.poshEmail],
+      [/\[Jurisdiction City, State\]/g, v.jurisdiction],
+      [/\[Acceptance Due Date, DD Month YYYY\]/g, longDate(v.acceptBy)],
+      [/\[Signatory Name\], \[Signatory Designation\]/g, `${v.signatoryName}, ${v.signatoryDesignation}`],
     ];
   },
 };
