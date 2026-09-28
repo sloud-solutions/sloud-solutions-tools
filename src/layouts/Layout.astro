@@ -21,9 +21,13 @@ const nav = [
   { href: "/work-tracker", label: "Work Tracker", page: "work-tracker" },
 ];
 
-// Admin-only, account-wide (Resource Explorer), so it's gated by role alone,
-// not the per-employee page-access list like the items above.
-const adminNav = [{ href: "/cloud-resources", label: "Cloud Resource Tracker" }];
+// Admin-only, account-wide (Resource Explorer / job applications), so these
+// are gated by role alone, not the per-employee page-access list like the
+// items above.
+const adminNav = [
+  { href: "/cloud-resources", label: "Cloud Resource Tracker" },
+  { href: "/hrms", label: "HRMS" },
+];
 ---
 
 <!doctype html>

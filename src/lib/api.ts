@@ -191,6 +191,41 @@ export interface CostSummary {
  */
 export const getCostSummary = () => request<CostSummary>("/cost-summary");
 
+export type ResumeStatus = "pending" | "consider" | "not_consider";
+
+export interface Application {
+  id: string;
+  jobSlug: string;
+  jobTitle: string;
+  segment: string;
+  name: string;
+  email: string;
+  phone: string;
+  coverNote: string;
+  submittedAt: string;
+  status: ResumeStatus;
+  statusUpdatedAt: string | null;
+  statusUpdatedBy: string | null;
+}
+
+export interface ApplicationsResponse {
+  applications: Application[];
+  count: number;
+}
+
+/** Admin-only: every job application submitted through the website's careers "Apply" form. */
+export const listResumes = () => request<ApplicationsResponse>("/resumes");
+
+/** Admin-only: mints a fresh, short-lived presigned S3 URL for one application's resume file. */
+export const getResumeUrl = (id: string) => request<{ url: string }>(`/resumes/${encodeURIComponent(id)}/resume-url`);
+
+/** Admin-only: permanently removes the application record and its resume file from S3. */
+export const deleteResume = (id: string) => request<void>(`/resumes/${encodeURIComponent(id)}`, { method: "DELETE" });
+
+/** Admin-only: tags an application Consider / Not Consider / Pending. */
+export const updateResumeStatus = (id: string, status: ResumeStatus) =>
+  request<Application>(`/resumes/${encodeURIComponent(id)}`, { method: "PATCH", body: JSON.stringify({ status }) });
+
 export const listWorkTasks = (boardId: string) => request<WorkTask[]>(`/work-boards/${encodeURIComponent(boardId)}/tasks`);
 export const createWorkTask = (boardId: string, payload: Omit<WorkTask, "id" | "boardId" | "createdBy" | "createdAt" | "updatedAt">) =>
   request<WorkTask>(`/work-boards/${encodeURIComponent(boardId)}/tasks`, { method: "POST", body: JSON.stringify(payload) });
