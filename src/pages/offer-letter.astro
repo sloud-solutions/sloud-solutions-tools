@@ -252,15 +252,6 @@ const legendClass = "text-base font-semibold text-heading";
           class="docx-render-scope mt-4 hidden max-h-[75vh] overflow-auto rounded-lg bg-slate-100 p-2"
         >
         </div>
-        <!--
-          Off-screen, real-paginated render used only for the PDF export. The
-          visible preview above uses `ignoreHeight` so it reads as one
-          continuous document; PDF export instead needs docx-preview's own
-          real per-page sections (respecting each paragraph's `keepNext`, so
-          e.g. the signature block is never split across a page boundary),
-          one <section class="docx"> per actual page, captured individually.
-        -->
-        <div id="pdf-render-scope" class="docx-render-scope" style="position:fixed; left:-10000px; top:0; width:794px;"></div>
       </div>
     </div>
   </Section>
@@ -389,7 +380,6 @@ const legendClass = "text-base font-semibold text-heading";
 
   let objectUrl: string | null = null;
   let baseName = "Offer-Letter";
-  let currentBlob: Blob | null = null;
 
   // Scale the fixed-width A4 pages down to the preview panel.
   function fitPreview(scale?: number) {
@@ -402,24 +392,22 @@ const legendClass = "text-base font-semibold text-heading";
   }
   window.addEventListener("resize", () => fitPreview());
 
-  // Renders every real page of the letter (docx-preview's own pagination,
-  // which respects each paragraph's keepNext -- e.g. the signature block is
-  // never split) off-screen, and saves one full-bleed PDF page per section.
-  const pdfRenderScope = document.getElementById("pdf-render-scope") as HTMLElement;
+  // Captures every real page of the (now fully paginated, not ignoreHeight)
+  // on-screen preview -- docx-preview's own pagination respects each
+  // paragraph's keepNext, so e.g. the signature block is never split -- and
+  // saves one full-bleed PDF page per section.
   downloadPdf.addEventListener("click", async (event) => {
     event.preventDefault();
-    if (!currentBlob || downloadPdf.dataset.busy) return;
+    const pages = [...previewBody.querySelectorAll<HTMLElement>("section.docx")];
+    if (pages.length === 0 || downloadPdf.dataset.busy) return;
     downloadPdf.dataset.busy = "1";
     downloadPdfLabel.textContent = "Preparing PDF…";
     try {
       const [{ default: html2canvas }, { jsPDF }] = await Promise.all([import("html2canvas"), import("jspdf")]);
+      fitPreview(1); // capture at natural size, not the panel's shrunk-to-fit zoom
+      await document.fonts.ready;
 
-      pdfRenderScope.innerHTML = "";
-      await renderAsync(currentBlob, pdfRenderScope, undefined, { inWrapper: true, breakPages: true, ignoreLastRenderedPageBreak: true });
-      const pages = [...pdfRenderScope.querySelectorAll<HTMLElement>("section.docx")];
-      if (pages.length === 0) throw new Error("Could not lay out the letter for PDF export.");
-
-      const RENDER_SCALE = 3;
+      const RENDER_SCALE = 2;
       const pdf = new jsPDF({ unit: "pt", format: "a4", compress: true });
       const pageW = pdf.internal.pageSize.getWidth();
       const pageH = pdf.internal.pageSize.getHeight();
@@ -435,7 +423,7 @@ const legendClass = "text-base font-semibold text-heading";
       }
       pdf.save(`${baseName}.pdf`);
     } finally {
-      pdfRenderScope.innerHTML = "";
+      fitPreview();
       delete downloadPdf.dataset.busy;
       downloadPdfLabel.textContent = "Download PDF";
     }
@@ -519,7 +507,6 @@ const legendClass = "text-base font-semibold text-heading";
       const template = await response.arrayBuffer();
 
       const { blob, leftovers } = await generateLetter(type, template, values);
-      currentBlob = blob;
 
       if (objectUrl) URL.revokeObjectURL(objectUrl);
       objectUrl = URL.createObjectURL(blob);
@@ -533,7 +520,7 @@ const legendClass = "text-base font-semibold text-heading";
       previewBody.innerHTML = "";
       previewBody.classList.remove("hidden");
       placeholder.classList.add("hidden");
-      await renderAsync(blob, previewBody, undefined, { inWrapper: true, breakPages: true, ignoreLastRenderedPageBreak: true, ignoreHeight: true });
+      await renderAsync(blob, previewBody, undefined, { inWrapper: true, breakPages: true, ignoreLastRenderedPageBreak: true });
       fitPreview();
 
       warning.classList.toggle("hidden", leftovers.length === 0);
