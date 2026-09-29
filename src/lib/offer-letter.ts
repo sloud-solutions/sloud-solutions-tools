@@ -90,7 +90,7 @@ export const TEMPLATE_RULES: Record<string, (v: FormValues) => Rule[]> = {
       // Company header
       [/\[Registered address, City\]/g, v.companyAddress],
       [/\[PIN\]/g, v.companyPIN],
-      [/\[UDYAM-TN-00-0000000\]/g, v.companyRegNo],
+      [/\[UDYAM-TN-00-0000000\]/g, v.companyRegNo?.trim() || "Not yet registered"],
       [/\[if registered\]/g, v.companyGstin?.trim() || "Not applicable"],
       [/\[Proprietor Name\]/g, COMPANY.proprietorName],
       [literal("[email]"), COMPANY.email],

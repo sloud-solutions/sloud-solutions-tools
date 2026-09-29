@@ -110,7 +110,7 @@ const legendClass = "text-base font-semibold text-heading";
             <div class="mt-3 grid gap-5 sm:grid-cols-2">
               <Field id="intCompanyAddress" label="Registered address, city" required persist class="sm:col-span-2" />
               <Field id="companyPIN" label="PIN code" required persist pattern="[0-9]{6}" title="6-digit PIN code" />
-              <Field id="intCompanyRegNo" label="Udyam registration no." required persist />
+              <Field id="intCompanyRegNo" label="Udyam registration no. (if registered)" persist />
               <Field id="companyGstin" label="GSTIN (if registered)" persist />
               <Field id="intJurisdiction" label="City / district (Tamil Nadu)" required persist />
             </div>
@@ -249,9 +249,18 @@ const legendClass = "text-base font-semibold text-heading";
         <p id="preview-warning" class="mt-4 hidden rounded-lg bg-amber-50 p-3 text-sm text-amber-900"></p>
         <div
           id="preview-body"
-          class="mt-4 hidden max-h-[75vh] overflow-auto rounded-lg bg-slate-100 p-2"
+          class="docx-render-scope mt-4 hidden max-h-[75vh] overflow-auto rounded-lg bg-slate-100 p-2"
         >
         </div>
+        <!--
+          Off-screen, real-paginated render used only for the PDF export. The
+          visible preview above uses `ignoreHeight` so it reads as one
+          continuous document; PDF export instead needs docx-preview's own
+          real per-page sections (respecting each paragraph's `keepNext`, so
+          e.g. the signature block is never split across a page boundary),
+          one <section class="docx"> per actual page, captured individually.
+        -->
+        <div id="pdf-render-scope" class="docx-render-scope" style="position:fixed; left:-10000px; top:0; width:794px;"></div>
       </div>
     </div>
   </Section>
@@ -260,8 +269,8 @@ const legendClass = "text-base font-semibold text-heading";
 </Layout>
 
 <style is:global>
-  /* Keep layout identical between the live preview and the canvas capture used for PDF. */
-  #preview-body section.docx * {
+  /* Keep font rendering identical between the live preview and the off-screen PDF render. */
+  .docx-render-scope section.docx * {
     font-variant-ligatures: none;
     font-kerning: none;
     hyphens: manual;
@@ -380,6 +389,7 @@ const legendClass = "text-base font-semibold text-heading";
 
   let objectUrl: string | null = null;
   let baseName = "Offer-Letter";
+  let currentBlob: Blob | null = null;
 
   // Scale the fixed-width A4 pages down to the preview panel.
   function fitPreview(scale?: number) {
@@ -392,74 +402,40 @@ const legendClass = "text-base font-semibold text-heading";
   }
   window.addEventListener("resize", () => fitPreview());
 
-  // Renders each A4 page of the preview to canvas and saves them as a PDF.
+  // Renders every real page of the letter (docx-preview's own pagination,
+  // which respects each paragraph's keepNext -- e.g. the signature block is
+  // never split) off-screen, and saves one full-bleed PDF page per section.
+  const pdfRenderScope = document.getElementById("pdf-render-scope") as HTMLElement;
   downloadPdf.addEventListener("click", async (event) => {
     event.preventDefault();
-    const section = previewBody.querySelector<HTMLElement>("section.docx");
-    if (!section || downloadPdf.dataset.busy) return;
+    if (!currentBlob || downloadPdf.dataset.busy) return;
     downloadPdf.dataset.busy = "1";
     downloadPdfLabel.textContent = "Preparing PDF…";
     try {
       const [{ default: html2canvas }, { jsPDF }] = await Promise.all([import("html2canvas"), import("jspdf")]);
-      fitPreview(1);
-      const RENDER_SCALE = 2;
-      const canvas = await html2canvas(section, { scale: RENDER_SCALE, backgroundColor: "#ffffff", useCORS: true });
-      const ctx = canvas.getContext("2d")!;
 
-      // A canvas row is blank when every pixel in it is (near) white.
-      const rowIsBlank = (row: number) => {
-        const data = ctx.getImageData(0, row, canvas.width, 1).data;
-        for (let i = 0; i < data.length; i += 4) {
-          if (data[i] < 245 || data[i + 1] < 245 || data[i + 2] < 245) return false;
-        }
-        return true;
-      };
-      // Finds a cut position (canvas rows) inside a white gap between text lines, searching upwards from `limit`.
-      const findGap = (from: number, limit: number, minGap: number) => {
-        let gap = 0;
-        for (let row = limit; row > from + (limit - from) * 0.5; row--) {
-          gap = rowIsBlank(row) ? gap + 1 : 0;
-          if (gap >= minGap) return row + Math.floor(gap / 2);
-        }
-        return null;
-      };
-      // Section headings ("3. Title") as canvas rows, so a heading is never stranded at a page foot.
-      const secRect = section.getBoundingClientRect();
-      const rowsPerPx = canvas.height / secRect.height;
-      const headingTops = [...section.querySelectorAll<HTMLElement>("article p")]
-        .filter((el) => /^\d+\.\s/.test(el.textContent ?? "") && !el.closest("td"))
-        .map((el) => (el.getBoundingClientRect().top - secRect.top) * rowsPerPx);
-      const findCut = (from: number, limit: number) => {
-        const end = findGap(from, limit, 6 * RENDER_SCALE) ?? limit;
-        const stranded = headingTops.find((top) => top > from && top < end && end - top < 70 * RENDER_SCALE);
-        if (stranded === undefined) return end;
-        return findGap(from, stranded + 6 * RENDER_SCALE, 6 * RENDER_SCALE) ?? end;
-      };
+      pdfRenderScope.innerHTML = "";
+      await renderAsync(currentBlob, pdfRenderScope, undefined, { inWrapper: true, breakPages: true, ignoreLastRenderedPageBreak: true });
+      const pages = [...pdfRenderScope.querySelectorAll<HTMLElement>("section.docx")];
+      if (pages.length === 0) throw new Error("Could not lay out the letter for PDF export.");
 
+      const RENDER_SCALE = 3;
       const pdf = new jsPDF({ unit: "pt", format: "a4", compress: true });
       const pageW = pdf.internal.pageSize.getWidth();
       const pageH = pdf.internal.pageSize.getHeight();
-      const margin = 40;
-      const ptPerPx = pageW / (canvas.width / RENDER_SCALE);
-      const maxSlicePx = (pageH - margin * 2) / ptPerPx;
 
-      const maxSliceRows = Math.floor(maxSlicePx * RENDER_SCALE);
-      let y = 0;
-      while (y < canvas.height - 1) {
-        const limit = y + maxSliceRows;
-        const end = limit >= canvas.height ? canvas.height : findCut(y, limit);
-        const rows = end - y;
-        const slice = document.createElement("canvas");
-        slice.width = canvas.width;
-        slice.height = rows;
-        slice.getContext("2d")!.drawImage(canvas, 0, y, canvas.width, rows, 0, 0, canvas.width, rows);
-        if (y > 0) pdf.addPage();
-        pdf.addImage(slice.toDataURL("image/jpeg", 0.95), "JPEG", 0, margin, pageW, (rows / RENDER_SCALE) * ptPerPx);
-        y = end;
+      for (let i = 0; i < pages.length; i++) {
+        const canvas = await html2canvas(pages[i], { scale: RENDER_SCALE, backgroundColor: "#ffffff", useCORS: true });
+        // docx-preview sizes each page with min-height, so an overfull page can render
+        // slightly taller than nominal A4 -- fit to page width and preserve aspect ratio
+        // rather than force-stretching (which would distort content) or force-shrinking.
+        const imgH = Math.min(pageH, pageW * (canvas.height / canvas.width));
+        if (i > 0) pdf.addPage();
+        pdf.addImage(canvas.toDataURL("image/png"), "PNG", 0, 0, pageW, imgH);
       }
       pdf.save(`${baseName}.pdf`);
     } finally {
-      fitPreview();
+      pdfRenderScope.innerHTML = "";
       delete downloadPdf.dataset.busy;
       downloadPdfLabel.textContent = "Download PDF";
     }
@@ -543,6 +519,7 @@ const legendClass = "text-base font-semibold text-heading";
       const template = await response.arrayBuffer();
 
       const { blob, leftovers } = await generateLetter(type, template, values);
+      currentBlob = blob;
 
       if (objectUrl) URL.revokeObjectURL(objectUrl);
       objectUrl = URL.createObjectURL(blob);
