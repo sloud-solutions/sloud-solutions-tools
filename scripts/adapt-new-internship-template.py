@@ -45,6 +45,11 @@ for old, new in FIXED_REPLACEMENTS:
     assert old in xml, f"not found: {old!r}"
     xml = xml.replace(old, new)
 
+# Every table cell in the reference file used vertical-center alignment, which
+# floats short, single-line labels in the middle of a row rather than at the
+# top -- reads like a detached text box instead of normal document flow.
+xml = xml.replace('<w:vAlign w:val="center"/>', '<w:vAlign w:val="top"/>')
+
 data["word/document.xml"] = xml.encode("utf-8")
 
 buf = io.BytesIO()
