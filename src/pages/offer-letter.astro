@@ -249,7 +249,7 @@ const legendClass = "text-base font-semibold text-heading";
         <p id="preview-warning" class="mt-4 hidden rounded-lg bg-amber-50 p-3 text-sm text-amber-900"></p>
         <div
           id="preview-body"
-          class="docx-render-scope mt-4 hidden max-h-[75vh] overflow-auto rounded-lg bg-slate-100 p-2"
+          class="mt-4 hidden max-h-[75vh] overflow-auto rounded-lg bg-slate-100 p-2"
         >
         </div>
       </div>
@@ -260,8 +260,8 @@ const legendClass = "text-base font-semibold text-heading";
 </Layout>
 
 <style is:global>
-  /* Keep font rendering identical between the live preview and the off-screen PDF render. */
-  .docx-render-scope section.docx * {
+  /* Keep layout identical between the live preview and the canvas capture used for PDF. */
+  #preview-body section.docx * {
     font-variant-ligatures: none;
     font-kerning: none;
     hyphens: manual;
@@ -392,34 +392,83 @@ const legendClass = "text-base font-semibold text-heading";
   }
   window.addEventListener("resize", () => fitPreview());
 
-  // Captures every real page of the (now fully paginated, not ignoreHeight)
-  // on-screen preview -- docx-preview's own pagination respects each
-  // paragraph's keepNext, so e.g. the signature block is never split -- and
-  // saves one full-bleed PDF page per section.
+  // Renders each A4 page of the preview to canvas and saves them as a PDF.
+  // `ignoreHeight` on the preview means each explicit page break (e.g. before
+  // the internship template's Annexure) still starts its own <section
+  // class="docx">, but content *within* a section flows continuously rather
+  // than being height-constrained -- so each section is sliced into
+  // print-height pages by scanning for whitespace gaps between lines, and
+  // every section (not just the first) is processed, so the Annexure isn't
+  // dropped.
   downloadPdf.addEventListener("click", async (event) => {
     event.preventDefault();
-    const pages = [...previewBody.querySelectorAll<HTMLElement>("section.docx")];
-    if (pages.length === 0 || downloadPdf.dataset.busy) return;
+    const sections = [...previewBody.querySelectorAll<HTMLElement>("section.docx")];
+    if (sections.length === 0 || downloadPdf.dataset.busy) return;
     downloadPdf.dataset.busy = "1";
     downloadPdfLabel.textContent = "Preparing PDF…";
     try {
       const [{ default: html2canvas }, { jsPDF }] = await Promise.all([import("html2canvas"), import("jspdf")]);
-      fitPreview(1); // capture at natural size, not the panel's shrunk-to-fit zoom
-      await document.fonts.ready;
-
+      fitPreview(1);
       const RENDER_SCALE = 2;
+
       const pdf = new jsPDF({ unit: "pt", format: "a4", compress: true });
       const pageW = pdf.internal.pageSize.getWidth();
       const pageH = pdf.internal.pageSize.getHeight();
+      const margin = 40;
+      let pageStarted = false;
 
-      for (let i = 0; i < pages.length; i++) {
-        const canvas = await html2canvas(pages[i], { scale: RENDER_SCALE, backgroundColor: "#ffffff", useCORS: true });
-        // docx-preview sizes each page with min-height, so an overfull page can render
-        // slightly taller than nominal A4 -- fit to page width and preserve aspect ratio
-        // rather than force-stretching (which would distort content) or force-shrinking.
-        const imgH = Math.min(pageH, pageW * (canvas.height / canvas.width));
-        if (i > 0) pdf.addPage();
-        pdf.addImage(canvas.toDataURL("image/png"), "PNG", 0, 0, pageW, imgH);
+      for (const section of sections) {
+        const canvas = await html2canvas(section, { scale: RENDER_SCALE, backgroundColor: "#ffffff", useCORS: true });
+        const ctx = canvas.getContext("2d")!;
+
+        // A canvas row is blank when every pixel in it is (near) white.
+        const rowIsBlank = (row: number) => {
+          const data = ctx.getImageData(0, row, canvas.width, 1).data;
+          for (let i = 0; i < data.length; i += 4) {
+            if (data[i] < 245 || data[i + 1] < 245 || data[i + 2] < 245) return false;
+          }
+          return true;
+        };
+        // Finds a cut position (canvas rows) inside a white gap between text lines, searching upwards from `limit`.
+        const findGap = (from: number, limit: number, minGap: number) => {
+          let gap = 0;
+          for (let row = limit; row > from + (limit - from) * 0.5; row--) {
+            gap = rowIsBlank(row) ? gap + 1 : 0;
+            if (gap >= minGap) return row + Math.floor(gap / 2);
+          }
+          return null;
+        };
+        // Section headings ("3. Title") as canvas rows, so a heading is never stranded at a page foot.
+        const secRect = section.getBoundingClientRect();
+        const rowsPerPx = canvas.height / secRect.height;
+        const headingTops = [...section.querySelectorAll<HTMLElement>("article p")]
+          .filter((el) => /^\d+\.\s/.test(el.textContent ?? "") && !el.closest("td"))
+          .map((el) => (el.getBoundingClientRect().top - secRect.top) * rowsPerPx);
+        const findCut = (from: number, limit: number) => {
+          const end = findGap(from, limit, 6 * RENDER_SCALE) ?? limit;
+          const stranded = headingTops.find((top) => top > from && top < end && end - top < 70 * RENDER_SCALE);
+          if (stranded === undefined) return end;
+          return findGap(from, stranded + 6 * RENDER_SCALE, 6 * RENDER_SCALE) ?? end;
+        };
+
+        const ptPerPx = pageW / (canvas.width / RENDER_SCALE);
+        const maxSlicePx = (pageH - margin * 2) / ptPerPx;
+        const maxSliceRows = Math.floor(maxSlicePx * RENDER_SCALE);
+
+        let y = 0;
+        while (y < canvas.height - 1) {
+          const limit = y + maxSliceRows;
+          const end = limit >= canvas.height ? canvas.height : findCut(y, limit);
+          const rows = end - y;
+          const slice = document.createElement("canvas");
+          slice.width = canvas.width;
+          slice.height = rows;
+          slice.getContext("2d")!.drawImage(canvas, 0, y, canvas.width, rows, 0, 0, canvas.width, rows);
+          if (pageStarted) pdf.addPage();
+          pageStarted = true;
+          pdf.addImage(slice.toDataURL("image/jpeg", 0.95), "JPEG", 0, margin, pageW, (rows / RENDER_SCALE) * ptPerPx);
+          y = end;
+        }
       }
       pdf.save(`${baseName}.pdf`);
     } finally {
@@ -520,7 +569,7 @@ const legendClass = "text-base font-semibold text-heading";
       previewBody.innerHTML = "";
       previewBody.classList.remove("hidden");
       placeholder.classList.add("hidden");
-      await renderAsync(blob, previewBody, undefined, { inWrapper: true, breakPages: true, ignoreLastRenderedPageBreak: true });
+      await renderAsync(blob, previewBody, undefined, { inWrapper: true, breakPages: true, ignoreLastRenderedPageBreak: true, ignoreHeight: true });
       fitPreview();
 
       warning.classList.toggle("hidden", leftovers.length === 0);
