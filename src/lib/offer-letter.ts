@@ -1,6 +1,11 @@
 // Client-side: fills a .docx offer-letter template from form values.
 // Template placeholders are literal "[...]" text inside word/document.xml.
 import JSZip from "jszip";
+import { COMPANY } from "../data/company";
+
+const escapeRegExp = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+/** Builds a global regex that matches a literal bracketed placeholder string as-is. */
+const literal = (s: string) => new RegExp(escapeRegExp(s), "g");
 
 export type FormValues = Record<string, string>;
 
@@ -9,11 +14,6 @@ const DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingm
 const xmlEscape = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-const NUMBER_WORDS = [
-  "zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten",
-  "eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen", "seventeen", "eighteen", "nineteen", "twenty",
-  "twenty-one", "twenty-two", "twenty-three", "twenty-four", "twenty-five", "twenty-six", "twenty-seven", "twenty-eight", "twenty-nine", "thirty",
-];
 
 const parseIso = (iso: string) => {
   const [y, m, d] = iso.split("-").map(Number);
@@ -81,42 +81,54 @@ export const TEMPLATE_RULES: Record<string, (v: FormValues) => Rule[]> = {
     const year = parseIso(v.letterDate).getFullYear();
 
     const mode =
-      v.mode === "On-site" ? `On-site at ${v.location}` : v.mode === "Hybrid" && v.location ? `Hybrid (${v.location})` : v.mode;
+      v.mode === "On-site" ? `On-site at ${v.location}, Tamil Nadu` : v.mode === "Hybrid" && v.location ? `Hybrid (${v.location}), Tamil Nadu` : `${v.mode}, Tamil Nadu`;
 
-    const stipend =
-      v.stipendType === "paid"
-        ? `INR ${Number(v.stipendAmount).toLocaleString("en-IN")} per month, payable by ${ordinal(Number(v.payDay))} of the following month`
-        : "Nil – this is an unpaid internship";
-
-    const notice = Number(v.noticeDays);
-    const noticeText = `${NUMBER_WORDS[notice] ?? notice} (${notice})`;
-
-
-    // Mentor is the first "[Name], [Designation]" in the template, signatory the second.
-    const people = [`${v.mentorName}, ${v.mentorDesignation}`, `${v.signatoryName}, ${v.signatoryDesignation}`];
-    let personIndex = 0;
+    const roleTitle = `Trainee Intern – ${v.specialist}`;
+    const subjectLine = v.subjectLine?.trim() || `Offer of Unpaid Training Internship – ${roleTitle}`;
 
     return [
-      [/\[Registered address, City, State, PIN\]/g, v.companyAddress],
-      [/\[CIN[^\]]*\]/g, v.companyRegNo || "@@REMOVE@@"],
+      // Company header
+      [/\[Registered address, City\]/g, v.companyAddress],
+      [/\[PIN\]/g, v.companyPIN],
+      [/\[UDYAM-TN-00-0000000\]/g, v.companyRegNo],
+      [/\[if registered\]/g, v.companyGstin?.trim() || "Not applicable"],
+      [/\[Proprietor Name\]/g, COMPANY.proprietorName],
+      [literal("[email]"), COMPANY.email],
+
+      // Letter identity
       [/\[YYYY\]/g, String(year)],
       [/\[NN\]/g, seq],
       [/\[DD Month YYYY\]/g, longDate(v.letterDate)],
+      [literal("[Subject Line]"), subjectLine],
+
+      // Candidate
       [/\[Candidate Name\]/g, v.candidateName],
       [/\[Address, City, State, PIN\]/g, v.candidateAddress],
       [/\[Email\]/g, v.candidateEmail],
       [/\[Phone\]/g, v.candidatePhone || "@@REMOVE@@"],
-      [/\[Role Title\]/g, v.roleTitle],
+
+      // Role and particulars
+      [literal("[Specialist Area]"), v.specialist],
       [/\[Function or team\]/g, v.team],
-      [/\[DD\.MM\.YYYY\] to \[DD\.MM\.YYYY\] \(\[number\] months\)/g, `${dotDate(v.startDate)} to ${dotDate(v.endDate)} (${months} ${months === 1 ? "month" : "months"})`],
-      [/\[Remote \/ Hybrid \/ On-site at \[location\]\]/g, mode],
-      [/Approximately \[number\] hours/g, `Approximately ${v.hoursPerWeek} hours`],
-      [/\[Name\], \[Designation\]/g, () => people[personIndex++] ?? ""],
-      [/\[Nil [^\]]*\] \/ \[INR \[amount\] per month, payable by \[date\] of the following month\]/g, stipend],
-      [/\[seven \(7\)\]/g, noticeText],
-      [/\[Name \/ designated person or Internal Committee\] at \[email\]/g, `${v.poshName} at ${v.poshEmail}`],
-      [/\[City, State\]/g, v.jurisdiction],
-      [/on or before \[date\]/g, `on or before ${longDate(v.acceptBy)}`],
+      [literal("[DD.MM.YYYY] to [DD.MM.YYYY] ([3] months)"), `${dotDate(v.startDate)} to ${dotDate(v.endDate)} (${months} ${months === 1 ? "month" : "months"})`],
+      [literal("[Remote / Hybrid / On-site at [location], Tamil Nadu]"), mode],
+      [literal("not more than [30] hours a week"), `not more than ${v.hoursPerWeek} hours a week`],
+      [/\[Name\], \[Designation\]/g, `${v.mentorName}, ${v.mentorDesignation}`],
+
+      // Jurisdiction / governing law / POSH Local Committee district
+      [literal("[City]"), v.jurisdiction],
+      [literal("[District]"), v.jurisdiction],
+
+      // Acceptance
+      [/by \[date\]/g, `by ${longDate(v.acceptBy)}`],
+
+      // Annexure A1 — role/learning-objectives block (defaults to the reference
+      // template's own example text; each is an editable form field)
+      [literal("[Two or three lines on what the trainee will learn to do]"), v.roleSummary],
+      [literal("[Objective – e.g., plan and run a social media content calendar]"), v.objective1],
+      [literal("[Objective – e.g., do structured market research and present findings]"), v.objective2],
+      [literal("[Objective – e.g., use CRM / analytics / cloud tools confidently]"), v.objective3],
+      [literal("[List of tools, platforms and methods]"), v.toolsAndMethods],
     ];
   },
 

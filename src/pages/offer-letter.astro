@@ -65,15 +65,30 @@ const legendClass = "text-base font-semibold text-heading";
         </fieldset>
 
         <fieldset data-type-fields="internship" hidden class="space-y-5">
-          <legend class={legendClass}>Internship</legend>
+          <legend class={legendClass}>Training internship (unpaid)</legend>
           <div class="grid gap-5 sm:grid-cols-2">
-            <Field id="roleTitle" label="Role title" required />
+            <div class="sm:col-span-2">
+              <label for="specialist" class={labelClass}>
+                Specialist area <span class="text-red-600" aria-hidden="true">*</span>
+              </label>
+              <input
+                id="specialist"
+                name="specialist"
+                type="text"
+                required
+                placeholder="e.g. Digital Marketing, Sales, DevOps"
+                class="mt-1.5 w-full rounded-lg border border-border bg-white px-3.5 py-2.5 text-sm text-text focus-visible:border-blue"
+              />
+              <p class="mt-1.5 text-xs text-text-muted">Role title becomes "Trainee Intern – (your text)".</p>
+            </div>
+            <Field id="subjectLine" label="Subject line (optional)" placeholder='Defaults to "Offer of Unpaid Training Internship – Trainee Intern – <specialist>"' class="sm:col-span-2" />
             <div>
               <Field id="team" label="Function / team" required list="team-options" />
               <datalist id="team-options">
                 {SEGMENTS.map((s) => <option value={s.name} />)}
               </datalist>
             </div>
+            <Field id="hoursPerWeek" label="Hours per week (max)" type="number" required min="1" value="20" />
             <Field id="startDate" label="Start date" type="date" required />
             <Field id="endDate" label="End date" type="date" required />
             <div>
@@ -85,20 +100,32 @@ const legendClass = "text-base font-semibold text-heading";
               </select>
             </div>
             <Field id="location" label="Location" placeholder="e.g. Bengaluru" class="hidden" />
-            <Field id="hoursPerWeek" label="Hours per week" type="number" required min="1" value="20" />
             <Field id="mentorName" label="Mentor name" required />
             <Field id="mentorDesignation" label="Mentor designation" required />
-            <div>
-              <label for="stipendType" class={labelClass}>Stipend</label>
-              <select id="stipendType" name="stipendType" class={selectClass}>
-                <option value="unpaid">Unpaid internship</option>
-                <option value="paid">Paid (INR per month)</option>
-              </select>
-            </div>
-            <Field id="stipendAmount" label="Stipend per month (INR)" type="number" min="1" class="hidden" />
-            <Field id="payDay" label="Paid by day of next month" type="number" min="1" max="31" value="7" class="hidden" />
-            <Field id="noticeDays" label="Termination notice (days)" type="number" required min="1" max="30" value="7" />
             <Field id="acceptBy" label="Acceptance due date" type="date" required />
+          </div>
+
+          <div class="border-t border-border pt-5">
+            <p class="text-sm font-semibold text-navy">Company registration (for this letter's header)</p>
+            <div class="mt-3 grid gap-5 sm:grid-cols-2">
+              <Field id="intCompanyAddress" label="Registered address, city" required persist class="sm:col-span-2" />
+              <Field id="companyPIN" label="PIN code" required persist pattern="[0-9]{6}" title="6-digit PIN code" />
+              <Field id="intCompanyRegNo" label="Udyam registration no." required persist />
+              <Field id="companyGstin" label="GSTIN (if registered)" persist />
+              <Field id="intJurisdiction" label="City / district (Tamil Nadu)" required persist />
+            </div>
+          </div>
+
+          <div class="border-t border-border pt-5">
+            <p class="text-sm font-semibold text-navy">Annexure A1 — role and learning objectives</p>
+            <p class="mt-1 text-xs text-text-muted">Pre-filled with example text — edit for this candidate's specialist area.</p>
+            <div class="mt-3 grid gap-5">
+              <Field id="roleSummary" label="Role summary" required value="Two or three lines on what the trainee will learn to do" />
+              <Field id="objective1" label="Learning objective 1" required value="Objective – e.g., plan and run a social media content calendar" />
+              <Field id="objective2" label="Learning objective 2" required value="Objective – e.g., do structured market research and present findings" />
+              <Field id="objective3" label="Learning objective 3" required value="Objective – e.g., use CRM / analytics / cloud tools confidently" />
+              <Field id="toolsAndMethods" label="Tools and methods covered" required value="List of tools, platforms and methods" />
+            </div>
           </div>
         </fieldset>
 
@@ -172,7 +199,7 @@ const legendClass = "text-base font-semibold text-heading";
           </div>
         </fieldset>
 
-        <fieldset class="space-y-5">
+        <fieldset data-type-fields="full-time part-time" class="space-y-5">
           <legend class={legendClass}>Company details <span class="text-xs font-normal text-text-muted">(remembered in this browser)</span></legend>
           <div class="grid gap-5 sm:grid-cols-2">
             <Field id="companyAddress" label="Registered address" required persist class="sm:col-span-2" />
@@ -261,7 +288,6 @@ const legendClass = "text-base font-semibold text-heading";
   const typeSelect = document.getElementById("employmentType") as HTMLSelectElement;
   const typeNote = document.getElementById("type-note") as HTMLElement;
   const modeSelect = document.getElementById("mode") as HTMLSelectElement;
-  const stipendSelect = document.getElementById("stipendType") as HTMLSelectElement;
   const downloadLink = document.getElementById("download-link") as HTMLAnchorElement;
   const downloadPdf = document.getElementById("download-pdf") as HTMLAnchorElement;
   const downloadPdfLabel = document.getElementById("download-pdf-label") as HTMLElement;
@@ -294,15 +320,8 @@ const legendClass = "text-base font-semibold text-heading";
     const needsLocation = modeSelect.value !== "Remote";
     wrapper("location").classList.toggle("hidden", !needsLocation);
     setRequired("location", modeSelect.value === "On-site");
-
-    const paid = stipendSelect.value === "paid";
-    wrapper("stipendAmount").classList.toggle("hidden", !paid);
-    wrapper("payDay").classList.toggle("hidden", !paid);
-    setRequired("stipendAmount", paid);
-    setRequired("payDay", paid);
   }
   modeSelect.addEventListener("change", syncConditionalFields);
-  stipendSelect.addEventListener("change", syncConditionalFields);
   syncConditionalFields();
 
   function templateReady(): boolean {
@@ -316,7 +335,7 @@ const legendClass = "text-base font-semibold text-heading";
   const typeFieldsets = [...form.querySelectorAll<HTMLFieldSetElement>("[data-type-fields]")];
   function syncTypeFieldsets() {
     for (const fs of typeFieldsets) {
-      const active = fs.dataset.typeFields === typeSelect.value;
+      const active = (fs.dataset.typeFields ?? "").split(" ").includes(typeSelect.value);
       fs.hidden = !active;
       fs.disabled = !active;
     }
@@ -506,6 +525,15 @@ const legendClass = "text-base font-semibold text-heading";
         paymentDay: values.ptPaymentDay,
         noticeDays: values.ptNoticeDays,
         acceptBy: values.ptAcceptBy,
+      });
+    } else if (type === "internship") {
+      // These three ids are prefixed to avoid clashing with the full-time/
+      // part-time "Company details" fieldset's own companyAddress/companyRegNo/
+      // jurisdiction fields on the same page.
+      Object.assign(values, {
+        companyAddress: values.intCompanyAddress,
+        companyRegNo: values.intCompanyRegNo,
+        jurisdiction: values.intJurisdiction,
       });
     }
 
