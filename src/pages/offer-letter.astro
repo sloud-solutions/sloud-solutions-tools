@@ -466,7 +466,9 @@ const legendClass = "text-base font-semibold text-heading";
           slice.getContext("2d")!.drawImage(canvas, 0, y, canvas.width, rows, 0, 0, canvas.width, rows);
           if (pageStarted) pdf.addPage();
           pageStarted = true;
-          pdf.addImage(slice.toDataURL("image/jpeg", 0.95), "JPEG", 0, margin, pageW, (rows / RENDER_SCALE) * ptPerPx);
+          // PNG (lossless), not JPEG: JPEG compression rings/ghosts around the thin
+          // horizontal table borders, which reads as a strike-through or doubled line.
+          pdf.addImage(slice.toDataURL("image/png"), "PNG", 0, margin, pageW, (rows / RENDER_SCALE) * ptPerPx);
           y = end;
         }
       }
