@@ -1,0 +1,402 @@
+---
+import Layout from "../layouts/Layout.astro";
+import Section from "../components/Section.astro";
+import Icon from "../components/Icon.astro";
+
+const selectClass = "mt-1.5 w-full rounded-lg border border-border bg-white px-3.5 py-2.5 text-sm text-text focus-visible:border-blue";
+const textareaClass = "mt-1.5 w-full rounded-lg border border-border bg-white px-3.5 py-2.5 text-sm text-text focus-visible:border-blue";
+const disabledInputClass = "mt-1.5 w-full rounded-lg border border-border bg-bg-alt px-3.5 py-2.5 text-sm text-text-muted";
+const labelClass = "block text-sm font-medium text-navy";
+---
+
+<Layout title="Attendance Tracker | Sloud Solutions Portal">
+  <div id="app" class="hidden">
+    <Section background="white" maxWidth="narrow" class="animate-in text-center">
+      <span class="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-blue/10 text-blue">
+        <Icon name="calendar-check" class="h-7 w-7" />
+      </span>
+      <p class="mt-4 text-sm font-semibold uppercase tracking-wider text-blue">Daily Log</p>
+      <h1 class="mt-2 text-4xl font-bold leading-tight sm:text-5xl">Attendance Tracker</h1>
+      <p class="mx-auto mt-6 max-w-2xl text-lg leading-relaxed">Log today's availability and hours, and see your attendance at a glance.</p>
+    </Section>
+
+    <Section background="alt" maxWidth="wide">
+      <p id="error-banner" class="mb-6 hidden rounded-lg bg-red-50 p-3 text-sm text-red-800" role="alert"></p>
+      <p id="loading-note" class="text-sm text-text-muted">Loading…</p>
+
+      <div id="content" class="hidden space-y-8">
+        <!-- Today's entry -->
+        <div class="animate-in rounded-xl border border-border bg-white p-6 shadow-sm sm:p-8">
+          <h2 class="text-xl">Today's entry</h2>
+          <p id="entry-date-label" class="mt-1 text-sm text-text-muted"></p>
+
+          <form id="attendance-form" class="mt-5 space-y-5" novalidate>
+            <div class="grid gap-5 sm:grid-cols-3">
+              <div>
+                <label for="entry-employee-id" class={labelClass}>Employee ID</label>
+                <input id="entry-employee-id" type="text" disabled class={disabledInputClass} />
+              </div>
+              <div>
+                <label for="entry-employee-name" class={labelClass}>Name</label>
+                <input id="entry-employee-name" type="text" disabled class={disabledInputClass} />
+              </div>
+              <div>
+                <label for="entry-date" class={labelClass}>Date</label>
+                <input id="entry-date" type="text" disabled class={disabledInputClass} />
+              </div>
+            </div>
+
+            <div>
+              <label for="entry-status" class={labelClass}>Availability <span class="text-red-600" aria-hidden="true">*</span></label>
+              <select id="entry-status" name="status" required class={selectClass}>
+                <option value="Available">Available</option>
+                <option value="Not Available">Not Available</option>
+              </select>
+            </div>
+
+            <div id="available-fields" class="grid gap-5 sm:grid-cols-2">
+              <div>
+                <label for="entry-hours" class={labelClass}>Hours worked <span class="text-red-600" aria-hidden="true">*</span></label>
+                <input id="entry-hours" name="hoursWorked" type="number" min="0.5" max="24" step="0.5" class={selectClass} />
+              </div>
+              <div class="sm:col-span-2">
+                <label for="entry-summary" class={labelClass}>What did you work on? <span class="text-red-600" aria-hidden="true">*</span></label>
+                <textarea id="entry-summary" name="workSummary" rows="3" class={textareaClass} placeholder="Brief summary of today's work"></textarea>
+              </div>
+            </div>
+
+            <div id="unavailable-fields" class="hidden">
+              <label for="entry-reason" class={labelClass}>Reason <span class="text-red-600" aria-hidden="true">*</span></label>
+              <textarea id="entry-reason" name="reason" rows="3" class={textareaClass} placeholder="e.g. Sick leave, personal work"></textarea>
+            </div>
+
+            <p id="attendance-form-error" class="hidden rounded-lg bg-red-50 p-3 text-sm text-red-800" role="alert"></p>
+            <p id="attendance-form-success" class="hidden rounded-lg bg-emerald-50 p-3 text-sm text-emerald-800" role="status"></p>
+
+            <button id="attendance-submit" type="submit" class="rounded-lg bg-blue px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-hover">
+              Submit
+            </button>
+          </form>
+        </div>
+
+        <!-- My summary -->
+        <div class="grid gap-5 sm:grid-cols-3">
+          {
+            [
+              { key: "week", title: "This week" },
+              { key: "month", title: "This month" },
+              { key: "total", title: "All-time" },
+            ].map((card) => (
+              <div class="animate-in rounded-xl border border-border bg-white p-5 shadow-sm">
+                <p class="text-xs font-semibold uppercase tracking-wide text-text-muted">{card.title}</p>
+                <div class="mt-3 space-y-1.5 text-sm text-text">
+                  <p>
+                    Days worked: <span class="font-semibold text-navy" data-role={`${card.key}-days`}>0</span>
+                  </p>
+                  <p>
+                    Hours worked: <span class="font-semibold text-navy" data-role={`${card.key}-hours`}>0</span>
+                  </p>
+                  <p>
+                    Leave days: <span class="font-semibold text-navy" data-role={`${card.key}-leave`}>0</span>
+                  </p>
+                </div>
+              </div>
+            ))
+          }
+        </div>
+
+        <!-- My history -->
+        <div class="animate-in rounded-xl border border-border bg-white p-6 shadow-sm sm:p-8">
+          <h2 class="text-xl">My recent attendance</h2>
+          <div class="mt-4 overflow-x-auto">
+            <table class="w-full text-left text-sm">
+              <thead>
+                <tr class="border-b border-border text-text-muted">
+                  <th class="py-2 pr-4 font-medium">Date</th>
+                  <th class="py-2 pr-4 font-medium">Status</th>
+                  <th class="py-2 pr-4 font-medium">Hours</th>
+                  <th class="py-2 font-medium">Notes</th>
+                </tr>
+              </thead>
+              <tbody id="history-body"></tbody>
+            </table>
+          </div>
+          <p id="history-empty" class="mt-4 hidden text-sm text-text-muted">No attendance recorded yet.</p>
+        </div>
+
+        <!-- Admin: consolidated view -->
+        <div id="admin-section" class="hidden animate-in rounded-xl border border-border bg-white p-6 shadow-sm sm:p-8">
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 class="text-xl">Team attendance</h2>
+              <p class="mt-1 text-sm text-text-muted">Consolidated working hours and leave for every employee.</p>
+            </div>
+            <input
+              id="admin-month"
+              type="month"
+              class="rounded-lg border border-border bg-white px-3 py-2 text-sm font-medium text-navy focus-visible:border-blue"
+              aria-label="Month"
+            />
+          </div>
+          <div class="mt-4 overflow-x-auto">
+            <table class="w-full text-left text-sm">
+              <thead>
+                <tr class="border-b border-border text-text-muted">
+                  <th class="py-2 pr-4 font-medium">Employee ID</th>
+                  <th class="py-2 pr-4 font-medium">Name</th>
+                  <th class="py-2 pr-4 font-medium">Days worked</th>
+                  <th class="py-2 pr-4 font-medium">Hours worked</th>
+                  <th class="py-2 font-medium">Leave days</th>
+                </tr>
+              </thead>
+              <tbody id="admin-body"></tbody>
+            </table>
+          </div>
+          <p id="admin-empty" class="mt-4 hidden text-sm text-text-muted">No employees with an Employee ID yet.</p>
+        </div>
+      </div>
+    </Section>
+  </div>
+</Layout>
+
+<script>
+  import { requireLogin } from "../lib/auth";
+  import { loadMe, hasAccess } from "../lib/access";
+  import { listAttendance, submitAttendance, listEmployeeOptions, ApiError, type EmployeeOption } from "../lib/api";
+  import type { AttendanceRecord, AttendanceStatus } from "../data/attendance";
+
+  const todayIso = () => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  };
+
+  const parseIsoLocal = (iso: string) => {
+    const [y, m, d] = iso.split("-").map(Number);
+    return new Date(y, m - 1, d);
+  };
+
+  const startOfWeek = (d: Date) => {
+    const day = (d.getDay() + 6) % 7; // Monday = 0 ... Sunday = 6
+    const s = new Date(d.getFullYear(), d.getMonth(), d.getDate() - day);
+    return s;
+  };
+
+  function summarize(records: AttendanceRecord[]) {
+    const days = records.filter((r) => r.status === "Available").length;
+    const hours = records.reduce((sum, r) => sum + (r.status === "Available" ? r.hoursWorked : 0), 0);
+    const leave = records.filter((r) => r.status === "Not Available").length;
+    return { days, hours, leave };
+  }
+
+  async function init() {
+    if (!requireLogin()) return;
+
+    const me = await loadMe();
+    if (!hasAccess(me, "attendance")) {
+      location.replace("/");
+      return;
+    }
+    document.getElementById("app")!.classList.remove("hidden");
+
+    const $ = (id: string) => document.getElementById(id)!;
+    const loadingNote = $("loading-note");
+    const errorBanner = $("error-banner");
+    const content = $("content");
+    const showError = (message: string) => {
+      errorBanner.textContent = message;
+      errorBanner.classList.remove("hidden");
+    };
+
+    let all: AttendanceRecord[] = [];
+    let employeeOptions: EmployeeOption[] = [];
+    try {
+      const loads: [Promise<AttendanceRecord[]>, Promise<EmployeeOption[]>?] = [listAttendance()];
+      if (me.role === "Admin") loads.push(listEmployeeOptions());
+      const results = await Promise.all(loads);
+      all = results[0];
+      employeeOptions = (results[1] as EmployeeOption[]) ?? [];
+    } catch (err) {
+      loadingNote.classList.add("hidden");
+      showError(err instanceof ApiError ? err.message : "Could not load the Attendance Tracker. Please try again.");
+      return;
+    }
+    loadingNote.classList.add("hidden");
+    content.classList.remove("hidden");
+
+    let mine = all.filter((r) => r.employeeId === me.employeeId);
+
+    // --- Today's entry form ---
+    const today = todayIso();
+    (document.getElementById("entry-employee-id") as HTMLInputElement).value = me.employeeId || "—";
+    (document.getElementById("entry-employee-name") as HTMLInputElement).value = me.name || "—";
+    (document.getElementById("entry-date") as HTMLInputElement).value = today;
+    $("entry-date-label").textContent = new Date().toLocaleDateString("en-IN", { weekday: "long", day: "2-digit", month: "long", year: "numeric" });
+
+    const form = $("attendance-form") as HTMLFormElement;
+    const statusSelect = $("entry-status") as HTMLSelectElement;
+    const availableFields = $("available-fields");
+    const unavailableFields = $("unavailable-fields");
+    const hoursInput = $("entry-hours") as HTMLInputElement;
+    const summaryInput = $("entry-summary") as HTMLTextAreaElement;
+    const reasonInput = $("entry-reason") as HTMLTextAreaElement;
+    const formError = $("attendance-form-error");
+    const formSuccess = $("attendance-form-success");
+    const submitButton = $("attendance-submit") as HTMLButtonElement;
+
+    function syncConditionalFields() {
+      const isAvailable = statusSelect.value === "Available";
+      availableFields.classList.toggle("hidden", !isAvailable);
+      unavailableFields.classList.toggle("hidden", isAvailable);
+      hoursInput.required = isAvailable;
+      summaryInput.required = isAvailable;
+      reasonInput.required = !isAvailable;
+    }
+    statusSelect.addEventListener("change", syncConditionalFields);
+
+    function prefillToday() {
+      const existing = mine.find((r) => r.date === today);
+      if (existing) {
+        statusSelect.value = existing.status;
+        hoursInput.value = existing.hoursWorked ? String(existing.hoursWorked) : "";
+        summaryInput.value = existing.workSummary;
+        reasonInput.value = existing.reason;
+        submitButton.textContent = "Update today's entry";
+      } else {
+        statusSelect.value = "Available";
+        hoursInput.value = "";
+        summaryInput.value = "";
+        reasonInput.value = "";
+        submitButton.textContent = "Submit";
+      }
+      syncConditionalFields();
+    }
+    prefillToday();
+
+    if (!me.employeeId) {
+      form.querySelectorAll("input, select, textarea, button").forEach((el) => ((el as HTMLInputElement).disabled = true));
+      formError.textContent = "Your account isn't linked to an Employee ID yet. Ask an Admin to add one before logging attendance.";
+      formError.classList.remove("hidden");
+    }
+
+    // --- Summary cards + history ---
+    function renderMine() {
+      const now = new Date();
+      const weekStart = startOfWeek(now);
+      const monthPrefix = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+
+      const weekRecords = mine.filter((r) => parseIsoLocal(r.date) >= weekStart);
+      const monthRecords = mine.filter((r) => r.date.startsWith(monthPrefix));
+
+      const applyStats = (prefix: string, stats: { days: number; hours: number; leave: number }) => {
+        $(`${prefix}-days`).textContent = String(stats.days);
+        $(`${prefix}-hours`).textContent = stats.hours.toLocaleString("en-IN", { maximumFractionDigits: 1 });
+        $(`${prefix}-leave`).textContent = String(stats.leave);
+      };
+      applyStats("week", summarize(weekRecords));
+      applyStats("month", summarize(monthRecords));
+      applyStats("total", summarize(mine));
+
+      const sorted = [...mine].sort((a, b) => (a.date < b.date ? 1 : -1)).slice(0, 30);
+      const historyBody = $("history-body");
+      const historyEmpty = $("history-empty");
+      historyBody.replaceChildren(
+        ...sorted.map((r) => {
+          const tr = document.createElement("tr");
+          tr.className = "border-b border-border/60 last:border-0";
+          const fmtDate = parseIsoLocal(r.date).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+          const badgeClass = r.status === "Available" ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-900";
+          tr.innerHTML = `
+            <td class="py-2 pr-4">${fmtDate}</td>
+            <td class="py-2 pr-4"><span class="rounded-full px-2 py-0.5 text-xs font-medium ${badgeClass}">${r.status}</span></td>
+            <td class="py-2 pr-4">${r.status === "Available" ? r.hoursWorked : "—"}</td>
+            <td class="py-2 text-text-muted">${(r.status === "Available" ? r.workSummary : r.reason) || "—"}</td>
+          `;
+          return tr;
+        }),
+      );
+      historyEmpty.classList.toggle("hidden", sorted.length > 0);
+    }
+    renderMine();
+
+    // --- Admin: consolidated view ---
+    if (me.role === "Admin") {
+      const adminSection = $("admin-section");
+      adminSection.classList.remove("hidden");
+      const adminMonth = $("admin-month") as HTMLInputElement;
+      const now = new Date();
+      adminMonth.value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+
+      const roster = employeeOptions.filter((o) => o.employeeId);
+
+      function renderAdmin() {
+        const monthPrefix = adminMonth.value;
+        const body = $("admin-body");
+        const empty = $("admin-empty");
+        const rows = roster
+          .map((o) => {
+            const records = all.filter((r) => r.employeeId === o.employeeId && r.date.startsWith(monthPrefix));
+            return { option: o, stats: summarize(records) };
+          })
+          .sort((a, b) => a.option.name.localeCompare(b.option.name));
+
+        body.replaceChildren(
+          ...rows.map(({ option, stats }) => {
+            const tr = document.createElement("tr");
+            tr.className = "border-b border-border/60 last:border-0";
+            tr.innerHTML = `
+              <td class="py-2 pr-4">${option.employeeId}</td>
+              <td class="py-2 pr-4">${option.name}</td>
+              <td class="py-2 pr-4">${stats.days}</td>
+              <td class="py-2 pr-4">${stats.hours.toLocaleString("en-IN", { maximumFractionDigits: 1 })}</td>
+              <td class="py-2">${stats.leave}</td>
+            `;
+            return tr;
+          }),
+        );
+        empty.classList.toggle("hidden", rows.length > 0);
+      }
+      adminMonth.addEventListener("change", renderAdmin);
+      renderAdmin();
+    }
+
+    // --- Submit ---
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      formError.classList.add("hidden");
+      formSuccess.classList.add("hidden");
+      if (!form.reportValidity()) return;
+
+      const status = statusSelect.value as AttendanceStatus;
+      const payload = {
+        date: today,
+        status,
+        hoursWorked: status === "Available" ? Number(hoursInput.value) : 0,
+        workSummary: status === "Available" ? summaryInput.value.trim() : "",
+        reason: status === "Not Available" ? reasonInput.value.trim() : "",
+      };
+
+      submitButton.disabled = true;
+      try {
+        const saved = await submitAttendance(payload);
+        const idx = mine.findIndex((r) => r.date === today);
+        if (idx >= 0) mine[idx] = saved;
+        else mine.push(saved);
+        const allIdx = all.findIndex((r) => r.id === saved.id);
+        if (allIdx >= 0) all[allIdx] = saved;
+        else all.push(saved);
+
+        submitButton.textContent = "Update today's entry";
+        formSuccess.textContent = "Attendance saved.";
+        formSuccess.classList.remove("hidden");
+        renderMine();
+      } catch (err) {
+        formError.textContent = err instanceof ApiError ? err.message : "Could not save your attendance.";
+        formError.classList.remove("hidden");
+      } finally {
+        submitButton.disabled = false;
+      }
+    });
+  }
+
+  init();
+</script>

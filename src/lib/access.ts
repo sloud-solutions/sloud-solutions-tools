@@ -2,7 +2,7 @@
 // which reads Cognito's `cognito:groups` claim for role, and the caller's
 // Employees-table row for the per-page access list (Admins get every page
 // regardless of that list — see modules/cognito-user-pool + the `me` Lambda).
-export const PAGE_KEYS = ["offer-letter", "company-policy", "clients", "expenses", "employees", "work-tracker"] as const;
+export const PAGE_KEYS = ["offer-letter", "company-policy", "clients", "expenses", "employees", "work-tracker", "attendance"] as const;
 export type PageKey = (typeof PAGE_KEYS)[number];
 
 export const PAGE_LABELS: Record<PageKey, string> = {
@@ -12,6 +12,7 @@ export const PAGE_LABELS: Record<PageKey, string> = {
   expenses: "Expense Tracker",
   employees: "Employees",
   "work-tracker": "Work Tracker",
+  attendance: "Attendance Tracker",
 };
 
 export type AccountRole = "Admin" | "Employee";

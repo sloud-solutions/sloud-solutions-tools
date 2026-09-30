@@ -6,6 +6,7 @@ import type { Me } from "./access";
 import type { Expense } from "../data/expenses";
 import type { Employee } from "../data/employees";
 import type { WorkBoard, WorkTask } from "../data/work-tracker";
+import type { AttendanceRecord } from "../data/attendance";
 
 const BASE = import.meta.env.PUBLIC_API_BASE_URL as string;
 
@@ -232,3 +233,9 @@ export const createWorkTask = (boardId: string, payload: Omit<WorkTask, "id" | "
 export const updateWorkTask = (id: string, payload: Partial<Omit<WorkTask, "id" | "boardId" | "createdBy" | "createdAt" | "updatedAt">>) =>
   request<WorkTask>(`/work-tasks/${encodeURIComponent(id)}`, { method: "PATCH", body: JSON.stringify(payload) });
 export const deleteWorkTask = (id: string) => request<void>(`/work-tasks/${encodeURIComponent(id)}`, { method: "DELETE" });
+
+/** Admins get every employee's records (for the consolidated view); everyone else only ever gets their own. */
+export const listAttendance = () => request<AttendanceRecord[]>("/attendance");
+/** Upserts the caller's entry for the given date (one row per employee per day). */
+export const submitAttendance = (payload: Pick<AttendanceRecord, "date" | "status" | "hoursWorked" | "workSummary" | "reason">) =>
+  request<AttendanceRecord>("/attendance", { method: "POST", body: JSON.stringify(payload) });
