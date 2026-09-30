@@ -6,6 +6,7 @@ import {
   AuthenticationDetails,
   type CognitoUserSession,
 } from "amazon-cognito-identity-js";
+import { clearMeCache } from "./access";
 
 const SESSION_KEY = "sloud:session";
 
@@ -158,6 +159,10 @@ export function changeOwnPassword(username: string, currentPassword: string, new
 export function logout(): void {
   pool.getCurrentUser()?.signOut();
   clearSession();
+  // Otherwise the next login in this tab reuses the previous user's cached
+  // name/role/access from loadMe() (sessionStorage survives across logins,
+  // only tab close clears it) until something forces a fresh GET /me.
+  clearMeCache();
 }
 
 /** Redirects to the login page when there is no session; returns whether the page may render. */
