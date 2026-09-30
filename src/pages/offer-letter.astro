@@ -88,6 +88,31 @@ const legendClass = "text-base font-semibold text-heading";
                 {SEGMENTS.map((s) => <option value={s.name} />)}
               </datalist>
             </div>
+            <div>
+              <label for="workingDaysFrom" class={labelClass}>Working days: from <span class="text-red-600" aria-hidden="true">*</span></label>
+              <select id="workingDaysFrom" name="workingDaysFrom" required class={selectClass}>
+                <option value="Sunday">Sunday</option>
+                <option value="Monday">Monday</option>
+                <option value="Tuesday" selected>Tuesday</option>
+                <option value="Wednesday">Wednesday</option>
+                <option value="Thursday">Thursday</option>
+                <option value="Friday">Friday</option>
+                <option value="Saturday">Saturday</option>
+              </select>
+            </div>
+            <div>
+              <label for="workingDaysTo" class={labelClass}>Working days: to <span class="text-red-600" aria-hidden="true">*</span></label>
+              <select id="workingDaysTo" name="workingDaysTo" required class={selectClass}>
+                <option value="Sunday">Sunday</option>
+                <option value="Monday">Monday</option>
+                <option value="Tuesday">Tuesday</option>
+                <option value="Wednesday">Wednesday</option>
+                <option value="Thursday">Thursday</option>
+                <option value="Friday">Friday</option>
+                <option value="Saturday" selected>Saturday</option>
+              </select>
+              <p class="mt-1.5 text-xs text-text-muted">Default is Tuesday–Saturday (Sunday and Monday off).</p>
+            </div>
             <Field id="hoursPerWeek" label="Hours per week (max)" type="number" required min="1" value="20" />
             <Field id="startDate" label="Start date" type="date" required />
             <Field id="endDate" label="End date" type="date" required />

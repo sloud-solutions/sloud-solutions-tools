@@ -40,6 +40,26 @@ const ordinal = (n: number) => {
 
 const inr = (n: number) => Number(n || 0).toLocaleString("en-IN");
 
+const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+/** Inclusive day-of-week range, wrapping past Saturday back to Sunday if needed. */
+const dayRange = (from: string, to: string): string[] => {
+  const fromIdx = DAYS.indexOf(from);
+  const toIdx = DAYS.indexOf(to);
+  const days: string[] = [];
+  for (let i = fromIdx; ; i = (i + 1) % 7) {
+    days.push(DAYS[i]);
+    if (i === toIdx) break;
+  }
+  return days;
+};
+/** e.g. ["Sunday", "Monday"] -> "Sundays and Mondays" */
+const listDaysOff = (days: string[]): string => {
+  const plural = days.map((d) => `${d}s`);
+  if (plural.length === 0) return "no days";
+  if (plural.length === 1) return plural[0];
+  return `${plural.slice(0, -1).join(", ")} and ${plural[plural.length - 1]}`;
+};
+
 const ONES = [
   "", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten",
   "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen", "Seventeen", "Eighteen", "Nineteen",
@@ -86,6 +106,9 @@ export const TEMPLATE_RULES: Record<string, (v: FormValues) => Rule[]> = {
     const roleTitle = `Trainee Intern – ${v.specialist}`;
     const subjectLine = v.subjectLine?.trim() || `Offer of Unpaid Training Internship – ${roleTitle}`;
 
+    const workingDays = dayRange(v.workingDaysFrom, v.workingDaysTo);
+    const offDays = DAYS.filter((d) => !workingDays.includes(d));
+
     return [
       // Company header
       [/\[Registered address, City\]/g, v.companyAddress],
@@ -112,6 +135,8 @@ export const TEMPLATE_RULES: Record<string, (v: FormValues) => Rule[]> = {
       [/\[Function or team\]/g, v.team],
       [literal("[DD.MM.YYYY] to [DD.MM.YYYY] ([3] months)"), `${dotDate(v.startDate)} to ${dotDate(v.endDate)} (${months} ${months === 1 ? "month" : "months"})`],
       [literal("[Remote / Hybrid / On-site at [location], Tamil Nadu]"), mode],
+      [literal("[Working Days]"), `${v.workingDaysFrom} to ${v.workingDaysTo}`],
+      [literal("[Off Days]"), listDaysOff(offDays)],
       [literal("not more than [30] hours a week"), `not more than ${v.hoursPerWeek} hours a week`],
       [/\[Name\], \[Designation\]/g, `${v.mentorName}, ${v.mentorDesignation}`],
 
